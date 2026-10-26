@@ -63,7 +63,7 @@ def signal(rows):
     sma, vol, raw = out[-1]
     return dict(date=rows[-1][0], close=round(closes[-1], 2), sma200=round(sma, 2), vol20=round(vol, 4),
                 above=closes[-1] > sma, calm=vol < 0.25, raw=raw, on=state, since=since,
-                pending=(raw != state), history=[[d, round(c, 2)] for d, c in rows[-260:]])
+                pending=(raw != state))
 
 
 def hk_cpi():
@@ -151,7 +151,7 @@ def main():
     json.dump(data, open(OUT, "w"), indent=1)
     print(json.dumps({k: v for k, v in data.items() if k not in ("signal", "cpi")}, indent=1))
     if "cpi" in data: print({k: v for k, v in data["cpi"].items() if k != "index"})
-    if "signal" in data: print({k: v for k, v in data["signal"].items() if k != "history"})
+    if "signal" in data: print(data["signal"])
     if not data.get("signal") and not prices:
         sys.exit("No data fetched at all")
 
