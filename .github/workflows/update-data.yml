@@ -61,6 +61,6 @@ jobs:
             "$OWNER" "$FLIP" "$WHEN" "$DETAIL" "$ACTION" "$SITE" > body.md
           gh issue create --title "Signal $FLIP on $WHEN" --body-file body.md
           if [ -n "$NTFY_TOPIC" ]; then
-            curl -fsS -H "Title: Signal $FLIP ($WHEN close)" -H "Priority: high" -H "Tags: chart_with_downwards_trend" \
+            curl -fsS -H "Title: Signal $FLIP ($WHEN close)" -H "Priority: high" -H "Tags: $([ "$FLIP" = "OFF" ] && echo chart_with_downwards_trend || echo chart_with_upwards_trend)" \
               -H "Click: $SITE" -d "$ACTION" "https://ntfy.sh/$NTFY_TOPIC" || echo "ntfy failed"
           fi
