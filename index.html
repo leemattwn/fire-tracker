@@ -268,7 +268,7 @@ td.r, th.r { text-align: right; }
   const DEFAULTS = { dob: "2008-09-12", ageDate: "2026-09-12", age: 18, gradAge: 23, studentMonthly: 1200, monthly: 25000, living: 10000,
                      retireIncome: 27500, swr: 4, realReturn: 6, inflation: 2.5, startBalance: 0, svShare: 70 };
   let S = { ...DEFAULTS };
-  let checkins = [], daily = [];       // daily = your balance on each day you opened the tracker
+  let checkins = [];
   let db = null, canWrite = true;
   const YR = 365.25 * 864e5;
   const SWR = 4, RET = 6, SV = 70;   // 70% small value / 30% S&P 500 is fixed             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
@@ -378,8 +378,7 @@ td.r, th.r { text-align: right; }
     let start = Math.min(S.age, a0); const fa = fiAge(a0, b0, RET), fa4 = fiAge(a0, b0, 4);
     let end = Math.max(a0 + 5, Math.ceil(Math.min(70, isFinite(fa4) ? fa4 : isFinite(fa) ? fa + 8 : 65)) + 1);
     const fan = [4, RET, 8].map(r => ({ r, pts: path(a0, b0, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
-    const byDate = new Map(); daily.forEach(d => byDate.set(d.date, { date: d.date, balance: d.balance })); checkins.forEach(c => byDate.set(c.date, { date: c.date, balance: c.balance, ci: true }));
-    const pastPts = [...byDate.values()].sort((p, q) => (p.date < q.date ? -1 : 1)).map(p => [ageAt(p.date), p.balance, p.date, !!p.ci]);
+    const pastPts = checkins.map(c => [ageAt(c.date), c.balance, c.date, true]);   // one point a month: your monthly check-ins
     const main = fan[1], hist = checkins.map(c => [ageAt(c.date), c.balance]);
     if (HIST) {                                        // history view: just your recorded balances, first record to today
       start = pastPts.length ? pastPts[0][0] : a0; end = Math.max(start + 1 / 12, pastPts.length ? pastPts[pastPts.length - 1][0] : a0);
@@ -411,7 +410,7 @@ td.r, th.r { text-align: right; }
     });
     if (pastPts.length > 1) el("path", { d: pastPts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
     hist.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 3.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
-    if (HIST && pastPts.length < 2) { const t = el("text", { x: (m.l + W - m.r) / 2, y: H / 2, "text-anchor": "middle", "font-size": 13, fill: C("--muted") }, svg); t.textContent = "Your history fills in each day you open the tracker."; }
+    if (HIST && pastPts.length < 2) { const t = el("text", { x: (m.l + W - m.r) / 2, y: H / 2, "text-anchor": "middle", "font-size": 13, fill: C("--muted") }, svg); t.textContent = "Your history fills in one point each month."; }
     if (!HIST && isFinite(fa) && fa <= end) {                          // where the likely line reaches your target
       const fv = S.target * nomAt(fa);
       el("circle", { cx: x(fa), cy: y(fv), r: 6, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2.5 }, svg);
@@ -434,13 +433,13 @@ td.r, th.r { text-align: right; }
     function fill(a, live) {
       rd.textContent = "";
       const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
-      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : HIST ? "Drag along the line to see any day" : "Drag along the chart to see any age", null, "h");
+      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : HIST ? "Drag along the line to see any month" : "Drag along the chart to see any age", null, "h");
       if (HIST) {
         const b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null), first = pastPts[0];
-        if (live) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · recorded` : `Between ${b.from} and ${b.to} (estimated)`) : "—";
+        if (live) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · monthly check-in` : `Between ${b.from} and ${b.to} (estimated)`) : "—";
         add("Your balance: ", b ? hk(b.v) : "—");
         add("Change: ", first && b ? `${b.v >= first[1] ? "+" : "−"}${hk(Math.abs(b.v - first[1]))}` : "—");
-        add("First record: ", first ? hk(first[1]) : "—", "muted"); add("Days recorded: ", `${pastPts.length}`, "muted");
+        add("First record: ", first ? hk(first[1]) : "—", "muted"); add("Months recorded: ", `${pastPts.length}`, "muted");
         return;
       }
       const past = a < a0 - 1e-6, b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null);
@@ -749,15 +748,6 @@ td.r, th.r { text-align: right; }
     catch (e) { $("hStatus").textContent = "Couldn't save. Try again in a moment."; }
   });
 
-  // ---------- daily balance log: one point per day you open the tracker, at that day's prices ----------
-  async function recordDaily() {
-    if (!MKT || !db || !S.setupDone || missingPx().length) return;
-    const usdTot = planUsd(vals()); if (!(usdTot > 0)) return;
-    const date = today(), bal = Math.round(usdTot * fxRate() * 100) / 100, prev = daily.find(d => d.date === date);
-    if (prev && Math.abs(prev.balance - bal) < 0.005) return;
-    await db.collection("daily").doc("d" + date.replace(/-/g, "")).set({ date, balance: bal });
-  }
-
   // ---------- "I bought it" ----------
   const FEE = t => (t === "VOO" || t === "AVUV" ? 0.35 : t === "CASH" || t === "EF" ? 0 : 1.70);
   const fname = t => (t === "EF" ? "HK$ to your emergency fund" : t === "CASH" ? "US$ cash waiting" : t);
@@ -854,7 +844,7 @@ td.r, th.r { text-align: right; }
       MKT = await r.json();
     } catch (e) { MKT = null; }
     renderSignal(); renderAll();
-    if (document.body.classList.contains("in-setup")) setupNotes(); else { autoCheckin(); recordDaily(); }
+    if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
   $("vProj").addEventListener("click", () => setView("proj")); $("vHist").addEventListener("click", () => setView("hist"));
@@ -897,7 +887,6 @@ td.r, th.r { text-align: right; }
   });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; fillHoldForm(); renderBuy(); } });
   db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });
-  db.collection("daily").orderBy("date").onSnapshot(q => { daily = q.docs.map(d => d.data()).filter(c => c.date && isFinite(c.balance)); renderChart(); });
   $("bkDown").addEventListener("click", () => {
     try {
       const blob = new Blob([db.exportJSON()], { type: "application/json" });
