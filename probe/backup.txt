@@ -1,0 +1,8 @@
+yahoo ok ('2026-10-23', 7623.68017578125)
+stooq raw head: <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>This site requires JavaScript to verify your browser. Please enable JavaScript an len 796
+stooq error Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+  File "/home/runner/work/fire-tracker/fire-tracker/scripts/update_data.py", line 62, in stooq_spx
+    raise RuntimeError(f"stooq: {last}")
+RuntimeError: stooq: could not convert string to float: 'e.encode(c+n))'
+
