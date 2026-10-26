@@ -102,6 +102,15 @@ def main():
         data["errors"].append(f"USD/HKD: {e}")
         data["usdhkd"] = old.get("usdhkd", 7.8)
 
+    # tell the workflow when the filter flips, so it can notify you
+    was, now = old.get("signal", {}).get("on"), data.get("signal", {}).get("on")
+    if os.environ.get("GITHUB_OUTPUT") and isinstance(was, bool) and isinstance(now, bool) and was != now:
+        sg = data["signal"]
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"flip={'ON' if now else 'OFF'}\n")
+            f.write(f"date={sg['date']}\n")
+            f.write(f"detail=S&P 500 {sg['close']:,} vs 200-day average {sg['sma200']:,}; 20-day volatility {sg['vol20'] * 100:.1f}%\n")
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(data, open(OUT, "w"), indent=1)
     print(json.dumps({k: v for k, v in data.items() if k != "signal"}, indent=1))
