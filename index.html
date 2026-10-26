@@ -34,9 +34,8 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .stat .s { font-size: 13px; color: var(--muted); }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); align-self: flex-start; }
 .pill.ahead { color: var(--ahead); } .pill.behind { color: var(--behind); }
-.snellen { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-family: var(--mono); font-weight: 600; }
-.snellen span { color: var(--line); line-height: 1; }
-.snellen span.on { color: var(--accent); }
+.pbar { height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; margin-top: 4px; }
+.pbar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .chartbox { position: relative; min-height: 340px; }
 .chartbox svg { display: block; touch-action: pan-y; }
 .chartbox, .chartbox * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
@@ -151,7 +150,7 @@ td.r, th.r { text-align: right; }
     <div class="stat"><span class="eyebrow">Latest balance</span><span class="v" id="sLatest">—</span><span class="s" id="sLatestSub">Save your first monthly check-in below</span></div>
     <div class="stat"><span class="eyebrow">Plan says by now</span><span class="v" id="sPlan">—</span><span class="pill" id="sGap">no check-in yet</span></div>
     <div class="stat"><span class="eyebrow">Projected FI age</span><span class="v" id="sFi">—</span><span class="s" id="sFiSub">at your assumed return</span></div>
-    <div class="stat"><span class="eyebrow">Progress, as acuity</span><span class="v" id="sAcuity">—</span><div class="snellen" id="snellen" aria-hidden="true"></div></div>
+    <div class="stat"><span class="eyebrow">Progress to target</span><span class="v" id="sPct">—</span><div class="pbar" aria-hidden="true"><i id="sBar" style="width:0"></i></div><span class="s" id="sPctSub">of the target in today's money</span></div>
   </section>
 
   <section class="panel" aria-labelledby="sigTitle">
@@ -323,13 +322,11 @@ td.r, th.r { text-align: right; }
   const dateAtAge = a => new Date(new Date(S.dob).getTime() + a * YR).toISOString().slice(0, 10);
   const nomAt = a => inflFactor(S.ageDate, dateAtAge(a));                           // price level at that age vs the plan start
 
-  // ---------- acuity readout (progress to target, Snellen scale) ----------
-  const ACUITY = [[0.1, "6/60"], [0.17, "6/36"], [0.25, "6/24"], [0.33, "6/18"], [0.5, "6/12"], [0.67, "6/9"], [0.8, "6/7.5"], [1, "6/6"]];
-  const LETTERS = ["E", "F", "P", "T", "O", "Z", "L", "D"];
-  function acuity(p) { let lab = "<6/60"; for (const [t, l] of ACUITY) if (p >= t) lab = l; return lab; }
-  function drawSnellen(p) {
-    const el = $("snellen"); el.textContent = "";
-    LETTERS.forEach((L, i) => { const s = document.createElement("span"); s.textContent = L; s.style.fontSize = (22 - i * 2) + "px"; if (p >= ACUITY[i][0]) s.className = "on"; el.appendChild(s); });
+  // ---------- progress to target ----------
+  function drawProgress(p) {
+    const pct = Math.max(0, p * 100);
+    $("sPct").textContent = (pct < 10 ? pct.toFixed(2) : pct.toFixed(1)) + "%";
+    $("sBar").style.width = Math.min(100, pct) + "%";
   }
 
   // ---------- summary ----------
@@ -341,7 +338,7 @@ td.r, th.r { text-align: right; }
       $("sLatest").textContent = "—"; $("sLatestSub").textContent = "Add your first check-in below";
       $("sPlan").textContent = hk(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "no check-in yet";
       $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `at ${RET}% a year after inflation`;
-      $("sAcuity").textContent = acuity(S.startBalance / S.target); drawSnellen(S.startBalance / S.target);
+      drawProgress(S.startBalance / S.target);
       return;
     }
     const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a) * nomAt(a), bal = latest.balance;
@@ -354,7 +351,7 @@ td.r, th.r { text-align: right; }
     const fa = fiAge(a, real, S.realReturn);
     $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
     $("sFiSub").textContent = isFinite(fa) ? `at ${RET}% a year after inflation` : "raise the monthly amount";
-    const p = real / S.target; $("sAcuity").textContent = acuity(p); drawSnellen(p);
+    drawProgress(real / S.target);
   }
 
   // ---------- chart ----------
