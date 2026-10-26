@@ -1,0 +1,38 @@
+name: Update market data
+
+on:
+  schedule:
+    - cron: "35 21 * * 1-5"   # 05:35 Hong Kong, after the US close
+    - cron: "50 16 * * 1-5"   # 00:50 Hong Kong, after the London close
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_data.py"
+      - ".github/workflows/update-data.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch prices and compute the signal
+        run: python scripts/update_data.py
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/market.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update market data"
+          git pull --rebase
+          git push

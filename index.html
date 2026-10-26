@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FIRE tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column, summary strip on top, chart, then check-ins beside the plan settings; phases at the bottom. */
+:root {
+  --bg: #f4f7f6; --panel: #ffffff; --fg: #12201c; --muted: #5b6b65; --line: #d5dfda; --soft: #e8efec;
+  --accent: #0e7a6b; --accent-soft: #d6efe9; --ahead: #15803d; --behind: #b4430f; --grid: #e3eae7;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1412; --panel: #131d1a; --fg: #e4ede9; --muted: #92a39c; --line: #26352f; --soft: #1a2622;
+  --accent: #41c3ae; --accent-soft: #163a33; --ahead: #4ade80; --behind: #f2894b; --grid: #1f2c28; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0d1412; --panel: #131d1a; --fg: #e4ede9; --muted: #92a39c; --line: #26352f; --soft: #1a2622;
+  --accent: #41c3ae; --accent-soft: #163a33; --ahead: #4ade80; --behind: #f2894b; --grid: #1f2c28; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: flex; flex-direction: column; gap: 22px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(30px, 6vw, 46px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+h2 { font-size: 19px; font-weight: 700; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+header { display: flex; flex-direction: column; gap: 8px; }
+.lede { max-width: 68ch; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.stat .s { font-size: 13px; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); align-self: flex-start; }
+.pill.ahead { color: var(--ahead); } .pill.behind { color: var(--behind); }
+.snellen { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-family: var(--mono); font-weight: 600; }
+.snellen span { color: var(--line); line-height: 1; }
+.snellen span.on { color: var(--accent); }
+.chartbox { position: relative; min-height: 340px; }
+.chartbox svg { display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.legend i.dash { border-top-style: dashed; border-color: var(--muted); }
+.legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--fg); }
+.legend i.tgt { border-color: var(--behind); border-top-style: dotted; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); display: none; white-space: nowrap; z-index: 2; }
+.tip b { font-family: var(--mono); font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
+form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; align-items: end; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); min-width: 0; }
+.sighead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sigbadge { font-family: var(--mono, monospace); font-weight: 600; font-size: 14px; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; }
+.sigbadge.on { color: var(--accent, #0f7a5c); } .sigbadge.off { color: #b4462f; }
+.hint { font-size: 12px; line-height: 1.4; color: var(--muted); opacity: .85; }
+input { font: inherit; font-family: var(--mono); font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; box-sizing: border-box; }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; font-weight: 600; font-size: 14px; border-radius: 7px; padding: 9px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--panel); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+button.link { border: 0; background: none; color: var(--muted); padding: 2px 6px; font-weight: 500; font-size: 13px; }
+button.link.danger { color: var(--behind); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+.tablewrap { overflow-x: auto; max-width: 100%; }
+#ciList { min-width: 0; max-width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.r, th.r { text-align: right; }
+.empty { padding: 18px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 14px; }
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.phase { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; background: var(--panel); min-width: 0; }
+.phase.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.phase .when { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.phase ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.badge { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.note { font-size: 13px; color: var(--muted); max-width: 80ch; }
+.buyrow { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 18px; align-items: center; }
+@media (max-width: 560px) { .buyrow { grid-template-columns: 1fr; } }
+.buycall { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 10px; background: var(--accent-soft); min-width: 0; }
+.buycall .v { font-family: var(--display); font-size: 34px; font-weight: 800; letter-spacing: -0.01em; color: var(--accent); line-height: 1.1; }
+.buycall .s { font-size: 13px; color: var(--fg); }
+.sides { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.side { display: grid; grid-template-columns: minmax(0, 120px) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.side .track { height: 12px; border-radius: 6px; background: var(--soft); overflow: hidden; }
+.side .fill { height: 100%; border-radius: 6px; background: var(--accent); }
+.side .fill.sp { background: var(--muted); }
+.side .amt { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; grid-column: 1 / -1; }
+.warn { color: var(--behind); }
+@media (prefers-reduced-motion: no-preference) { .panel, .stat { transition: border-color .2s; } }
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0;-webkit-text-size-adjust:100%} [hidden]{display:none!important}</style>
+</head><body>
+
+<main class="wrap">
+  <header>
+    <span class="eyebrow">FIRE plan · all figures in today's HK dollars · saved on this device</span>
+    <h1 id="title">HK$10M by 40</h1>
+    <p class="lede" id="lede">Check in once a month before you buy. The tracker picks the fund from your age and holdings, and shows whether you are ahead of or behind the path to financial independence.</p>
+  </header>
+
+  <section class="stats" aria-label="Summary">
+    <div class="stat"><span class="eyebrow">Latest balance</span><span class="v" id="sLatest">—</span><span class="s" id="sLatestSub">Save your first monthly check-in below</span></div>
+    <div class="stat"><span class="eyebrow">Plan says by now</span><span class="v" id="sPlan">—</span><span class="pill" id="sGap">no check-in yet</span></div>
+    <div class="stat"><span class="eyebrow">Projected FI age</span><span class="v" id="sFi">—</span><span class="s" id="sFiSub">at your assumed return</span></div>
+    <div class="stat"><span class="eyebrow">Progress, as acuity</span><span class="v" id="sAcuity">—</span><div class="snellen" id="snellen" aria-hidden="true"></div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="sigTitle">
+    <div class="sighead"><h2 id="sigTitle">Market signal</h2><span class="sigbadge" id="sigBadge">loading…</span></div>
+    <p class="small" id="sigText">Loading today's market data…</p>
+    <p class="small muted" id="sigMeta"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="buyTitle">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 id="buyTitle">Monthly check-in</h2>
+      <p class="small muted">Enter how many shares you own of each fund (change them only after you buy). Prices update every weekday, so each month just open the page, check the buy, and save today's check-in.</p><p class="small muted" id="buySub"></p>
+    </div>
+    <div class="buyrow">
+      <div class="buycall"><span class="eyebrow">This month, buy</span><span class="v" id="buyFund">AVUV</span><span class="s" id="buyWhy">Enter your holdings below to check which side is smaller.</span></div>
+      <div class="sides" id="sides"></div>
+    </div>
+    <form id="hForm" autocomplete="off">
+      <label for="hVUAA">VUAA (shares)<input id="hVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVUAA">—</span></label>
+      <label for="hVOO">VOO (shares)<input id="hVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVOO">—</span></label>
+      <label for="hI500">I500 (shares)<input id="hI500" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vI500">—</span></label>
+      <label for="hAVUV">AVUV (shares)<input id="hAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVUV">—</span></label>
+      <label for="hAVGS">AVGS (shares)<input id="hAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVGS">—</span></label>
+      <label for="hUSSC">USSC (shares)<input id="hUSSC" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vUSSC">—</span></label>
+      <label for="hIB01">IB01, parked (shares)<input id="hIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIB01">—</span></label>
+      <label for="hNote" style="grid-column: 1 / -1">Note (optional)<input id="hNote" type="text" maxlength="140" placeholder="e.g. first salary, signal OFF in March"></label>
+      <div class="btnrow">
+        <button type="submit" id="hSave">Save today's check-in</button>
+      </div>
+    </form>
+    <p class="status" id="hStatus" role="status"></p>
+    <p class="small muted" id="usNote"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="ciTitle">
+    <h2 id="ciTitle">Check-ins</h2>
+    <p class="small muted">Each monthly check-in is dated automatically and converted to HK dollars at that day's USD/HKD rate; the page adjusts for inflation. Saving twice on the same day replaces that day's entry.</p>
+    <p class="status" id="ciStatus" role="status"></p>
+    <div id="ciList"><div class="empty">No check-ins yet. Save your first monthly check-in to start tracking against the plan.</div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="chartTitle">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 id="chartTitle">Path to the target</h2>
+      <p class="small muted" id="chartSub">Projected balance by age at 4%, your assumed return and 8% a year after inflation, with your check-ins as dots.</p>
+    </div>
+    <div class="legend"><span><i></i>Your assumed return</span><span><i class="dash"></i>4% and 8% real</span><span><i class="tgt"></i>Target</span><span><i class="dot"></i>Check-ins (today's dollars)</span></div>
+    <div class="chartbox" id="chart"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="phTitle">
+    <h2 id="phTitle">What to do in each phase</h2>
+    <div class="phases" id="phases"></div>
+    <p class="note">The signal: the S&amp;P 500 closes above its 200-day average and its 20-day volatility is under 25%, two closes in a row. AVGS, VUAA and IB01 are Irish-domiciled UCITS funds on the London Stock Exchange. Projections assume steady returns; real markets will swing well above and below these lines. This page is a planning aid, not financial advice.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="planTitle">
+    <h2 id="planTitle">Your plan</h2>
+    <p class="small muted">Change these as your situation changes. Everything updates as you type and saves automatically.</p>
+    <form id="planForm" autocomplete="off" novalidate>
+      <label for="pAge">Your age<input id="pAge" type="number" min="10" max="80" step="1" required></label>
+      <label for="pAgeDate">…as of (your birthday)<input id="pAgeDate" type="date" required></label>
+      <label for="pGrad">Graduation age<input id="pGrad" type="number" min="10" max="80" step="any" required></label>
+      <label for="pStudent">Invested a month while studying (HK$)<input id="pStudent" type="number" min="0" step="any" required></label>
+      <label for="pMonthly">Invested a month after graduating (HK$)<input id="pMonthly" type="number" min="0" step="any" required></label>
+      <label for="pLiving">Living costs a month now (HK$)<input id="pLiving" type="number" min="0" step="any"><span class="hint">Sizes your emergency fund and shows how far the target goes. It doesn't change FI age.</span></label>
+      <label for="pTarget">FIRE target (HK$)<input id="pTarget" type="number" min="1" step="any" required></label>
+      <label for="pReturn">Assumed return, % a year after inflation<input id="pReturn" type="number" min="0" max="20" step="any" required></label>
+      <label for="pInfl">Inflation, % a year<input id="pInfl" type="number" min="-5" max="20" step="any" required></label>
+      <label for="pStart">Balance when the plan started (HK$)<input id="pStart" type="number" min="0" step="any"></label>
+      <label for="pSv">Small-value share target (%)<input id="pSv" type="number" min="0" max="100" step="any" required><span class="hint">Decides which fund "This month's buy" picks. It doesn't change FI age.</span></label>
+    </form>
+    <p class="status" id="pStatus" role="status"></p>
+    <p class="small muted" id="spendNote"></p>
+    <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
+      <h3>Backup</h3>
+      <p class="small muted">Everything is saved in this browser on this device only. Download a backup now and then; clearing browser data or switching phones erases it.</p>
+      <div class="btnrow"><button type="button" class="ghost" id="bkDown">Download backup</button></div>
+      <label for="bkFile" class="small">Restore from a backup file<input id="bkFile" type="file" accept="application/json,.json" style="max-width:100%;min-width:0"></label>
+      <p class="status" id="bkStatus" role="status"></p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const DEFAULTS = { age: 18, ageDate: "2026-09-12", gradAge: 23, studentMonthly: 1200, monthly: 25000, living: 10000,
+                     target: 10000000, realReturn: 5, inflation: 2.5, startBalance: 0, svShare: 70 };
+  let S = { ...DEFAULTS };
+  let checkins = [];
+  let db = null, canWrite = true;
+  const YR = 365.25 * 864e5;
+  const $ = id => document.getElementById(id);
+
+  const hk = v => {
+    if (!isFinite(v)) return "—";
+    const a = Math.abs(v);
+    if (a >= 1e6) return "HK$" + (v / 1e6).toFixed(a >= 1e7 ? 1 : 2) + "M";
+    if (a >= 1e4) return "HK$" + Math.round(v / 1e3) + "k";
+    return "HK$" + Math.round(v).toLocaleString("en");
+  };
+  const hkFull = v => "HK$" + Math.round(v).toLocaleString("en");
+  const hkExact = v => "HK$" + (+v).toLocaleString("en", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+
+  // ---------- plan maths (real terms, monthly compounding) ----------
+  const ageAt = d => S.age + (new Date(d) - new Date(S.ageDate)) / YR;
+  const contribAt = a => (a < S.gradAge ? S.studentMonthly : S.monthly);
+  function path(startAge, startBal, rPct, untilAge) {
+    const rm = Math.pow(1 + rPct / 100, 1 / 12) - 1; const pts = [[startAge, startBal]];
+    let a = startAge, b = startBal;
+    while (a < untilAge - 1e-9) { b = b * (1 + rm) + contribAt(a); a += 1 / 12; pts.push([a, b]); }
+    return pts;
+  }
+  function valueAt(rPct, age) { const p = path(S.age, S.startBalance, rPct, age); return p[p.length - 1][1]; }
+  function fiAge(startAge, startBal, rPct) {
+    const rm = Math.pow(1 + rPct / 100, 1 / 12) - 1; let a = startAge, b = startBal;
+    if (b >= S.target) return a;
+    while (a < 90) { b = b * (1 + rm) + contribAt(a); a += 1 / 12; if (b >= S.target) return a; }
+    return Infinity;
+  }
+  const realOf = c => c.balance / Math.pow(1 + S.inflation / 100, Math.max(0, (new Date(c.date) - new Date(S.ageDate)) / YR));
+
+  // ---------- acuity readout (progress to target, Snellen scale) ----------
+  const ACUITY = [[0.1, "6/60"], [0.17, "6/36"], [0.25, "6/24"], [0.33, "6/18"], [0.5, "6/12"], [0.67, "6/9"], [0.8, "6/7.5"], [1, "6/6"]];
+  const LETTERS = ["E", "F", "P", "T", "O", "Z", "L", "D"];
+  function acuity(p) { let lab = "<6/60"; for (const [t, l] of ACUITY) if (p >= t) lab = l; return lab; }
+  function drawSnellen(p) {
+    const el = $("snellen"); el.textContent = "";
+    LETTERS.forEach((L, i) => { const s = document.createElement("span"); s.textContent = L; s.style.fontSize = (22 - i * 2) + "px"; if (p >= ACUITY[i][0]) s.className = "on"; el.appendChild(s); });
+  }
+
+  // ---------- summary ----------
+  function renderSummary() {
+    $("title").textContent = `${hk(S.target).replace(".0M", "M")} FIRE plan`;
+    const latest = checkins.length ? checkins[checkins.length - 1] : null;
+    const fiPlan = fiAge(S.age, S.startBalance, S.realReturn);
+    if (!latest) {
+      $("sLatest").textContent = "—"; $("sLatestSub").textContent = "Add your first check-in below";
+      $("sPlan").textContent = hk(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "no check-in yet";
+      $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `on plan at ${S.realReturn}% real`;
+      $("sAcuity").textContent = acuity(S.startBalance / S.target); drawSnellen(S.startBalance / S.target);
+      return;
+    }
+    const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a);
+    $("sLatest").textContent = hk(real);
+    $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)} · ${hkExact(latest.balance)} as entered`;
+    $("sPlan").textContent = hk(plan);
+    const gap = real - plan, el = $("sGap");
+    if (plan <= 0) { el.className = "pill"; el.textContent = "plan just started"; }
+    else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hk(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
+    const fa = fiAge(a, real, S.realReturn);
+    $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
+    $("sFiSub").textContent = isFinite(fa) ? `${fa <= 40 ? "before" : "after"} 40 at ${S.realReturn}% real · plan: ${isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"}` : "raise the monthly amount or return";
+    const p = real / S.target; $("sAcuity").textContent = acuity(p); drawSnellen(p);
+  }
+
+  // ---------- chart ----------
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  function renderChart() {
+    const box = $("chart"); box.querySelectorAll("svg").forEach(s => s.remove());
+    const W = Math.max(300, box.clientWidth), H = 340, m = { l: 64, r: 16, t: 14, b: 34 };
+    const start = S.age;
+    const fiHi = Math.min(70, fiAge(S.age, S.startBalance, 4));
+    const end = Math.max(42, Math.ceil((isFinite(fiHi) ? fiHi : 60) + 1), ...checkins.map(c => Math.ceil(ageAt(c.date) + 1)));
+    const lines = [4, S.realReturn, 8].map(r => ({ r, pts: path(S.age, S.startBalance, r, end) }));
+    const realPts = checkins.map(c => [ageAt(c.date), realOf(c), c]);
+    const yMax = Math.max(S.target * 1.25, ...realPts.map(p => p[1] * 1.1));
+    const x = a => m.l + (a - start) / (end - start) * (W - m.l - m.r);
+    const y = v => H - m.b - Math.min(v, yMax) / yMax * (H - m.t - m.b);
+    const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Projected balance by age" }, null);
+    const css = getComputedStyle(document.documentElement), C = n => css.getPropertyValue(n).trim();
+    // grid + y ticks
+    const step = yMax > 20e6 ? 5e6 : yMax > 8e6 ? 2e6 : yMax > 3e6 ? 1e6 : 5e5;
+    for (let v = 0; v <= yMax; v += step) {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: C("--grid"), "stroke-width": 1 }, svg);
+      const t = el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = hk(v).replace("HK$", "");
+    }
+    // x ticks
+    const xs = (end - start) > 20 ? 5 : 2;
+    for (let a = Math.ceil(start / xs) * xs; a <= end; a += xs) {
+      const t = el("text", { x: x(a), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = a;
+    }
+    const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age";
+    // age 40 + graduation markers
+    [[40, "40"], [S.gradAge, "graduate"]].forEach(([a, lab]) => { if (a > start && a < end) {
+      el("line", { x1: x(a), x2: x(a), y1: m.t, y2: H - m.b, stroke: C("--line"), "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
+      const t = el("text", { x: x(a) + 4, y: m.t + 10, "font-size": 11, fill: C("--muted") }, svg); t.textContent = lab; } });
+    // target
+    el("line", { x1: m.l, x2: W - m.r, y1: y(S.target), y2: y(S.target), stroke: C("--behind"), "stroke-width": 1.5, "stroke-dasharray": "2 4" }, svg);
+    const tl = el("text", { x: m.l + 6, y: y(S.target) - 6, "font-size": 11, fill: C("--behind"), "font-family": "IBM Plex Mono, monospace" }, svg); tl.textContent = "target " + hk(S.target);
+    // paths
+    lines.forEach(L => {
+      const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("");
+      const main = L.r === S.realReturn;
+      el("path", { d, fill: "none", stroke: main ? C("--accent") : C("--muted"), "stroke-width": main ? 2.5 : 1.5, "stroke-dasharray": main ? "" : "5 4", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+      const last = L.pts[L.pts.length - 1];
+      if (!main) { const t = el("text", { x: Math.min(x(last[0]) - 4, W - m.r - 4), y: Math.max(m.t + 10, y(last[1]) - 6), "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); t.textContent = L.r + "%"; }
+    });
+    // check-ins
+    if (realPts.length > 1) el("path", { d: realPts.map((p, i) => (i ? "L" : "M") + x(p[0]) + "," + y(p[1])).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
+    realPts.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
+    // hover
+    let tip = box.querySelector(".tip"); if (!tip) { tip = document.createElement("div"); tip.className = "tip"; box.appendChild(tip); }
+    const rule = el("line", { y1: m.t, y2: H - m.b, stroke: C("--muted"), "stroke-width": 1, visibility: "hidden" }, svg);
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      let a = start + (px - m.l) / (W - m.l - m.r) * (end - start); a = Math.max(start, Math.min(end, a));
+      rule.setAttribute("x1", x(a)); rule.setAttribute("x2", x(a)); rule.setAttribute("visibility", "visible");
+      tip.textContent = "";
+      const head = document.createElement("div"); head.className = "muted"; head.textContent = "Age " + a.toFixed(1); tip.appendChild(head);
+      lines.forEach(L => { const i = Math.min(L.pts.length - 1, Math.round((a - start) * 12)); const row = document.createElement("div"); row.textContent = `${L.r}% real: `; const b = document.createElement("b"); b.textContent = hk(L.pts[i][1]); row.appendChild(b); tip.appendChild(row); });
+      tip.style.display = "block";
+      const bx = x(a) * r.width / W; tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, bx + 12 + tip.offsetWidth > box.clientWidth ? bx - tip.offsetWidth - 12 : bx + 12)) + "px"; tip.style.top = "8px";
+    });
+    svg.addEventListener("pointerleave", () => { tip.style.display = "none"; rule.setAttribute("visibility", "hidden"); });
+    box.insertBefore(svg, box.firstChild);
+  }
+
+  // ---------- check-in list ----------
+  function renderList() {
+    const wrap = $("ciList"); wrap.textContent = "";
+    if (!checkins.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No check-ins yet. Save your first monthly check-in to start tracking against the plan."; wrap.appendChild(e); return; }
+    const tw = document.createElement("div"); tw.className = "tablewrap";
+    const t = document.createElement("table");
+    t.innerHTML = '<thead><tr><th>Date</th><th class="r">Age</th><th class="r">Entered</th><th class="r">Today\'s HK$</th><th class="r">vs plan</th><th>Note</th><th></th></tr></thead>';
+    const tb = document.createElement("tbody");
+    [...checkins].reverse().forEach(c => {
+      const tr = document.createElement("tr"), a = ageAt(c.date), real = realOf(c), plan = valueAt(S.realReturn, a), gap = real - plan;
+      const cells = [c.date, a.toFixed(1), hkExact(c.balance), hkFull(real), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", c.note || ""];
+      cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 4) td.className = "r num"; if (i === 4 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
+      const td = document.createElement("td"); td.className = "r";
+      if (db && canWrite) {
+        const del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "Delete";
+        del.addEventListener("click", async () => {
+          if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Confirm"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "Delete"; }, 4000); return; }
+          del.disabled = true;
+          try { await db.collection("checkins").doc(c.id).delete(); $("ciStatus").textContent = "Check-in deleted."; }
+          catch (e) { $("ciStatus").textContent = "Couldn't delete that check-in. Try again in a moment."; del.disabled = false; }
+        });
+        td.appendChild(del);
+      }
+      tr.appendChild(td); tb.appendChild(tr);
+    });
+    t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  }
+
+  // ---------- phases ----------
+  function renderPhases() {
+    const latest = checkins.length ? checkins[checkins.length - 1] : null;
+    const nowAge = ageAt(today());
+    const fa = latest ? fiAge(ageAt(latest.date), realOf(latest), S.realReturn) : fiAge(S.age, S.startBalance, S.realReturn);
+    const approach = isFinite(fa) ? Math.max(S.gradAge, fa - 5) : null;
+    const yrs = S.living * 12;
+    const P = [
+      { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
+        `Invest ${hkFull(S.studentMonthly)} a month on the 15th, one trade: AVUV or VOO, whichever side is below target (${S.svShare}% small value, ${100 - S.svShare}% S&P 500). The tracker picks it for you.`,
+        "Convert HKD to USD every 2–3 months to keep IBKR's conversion minimum down.",
+        "Each January check-in: once AVUV + VOO pass about US$3,000, move AVUV into AVGS (or USSC for US-only) and VOO into VUAA.",
+        "Keep VUAA; it counts toward the S&P 500 side. Skip the filter while the balance is small. Protect your grades first."] },
+      { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
+        `First build an emergency fund of 6 months' costs (${hk(yrs / 2)}) in IB01.`,
+        `Then invest ${hkFull(S.monthly)} a month on the 15th into whichever side is below target: VUAA (or I500) for the S&P 500, AVGS (or USSC) for small value.`,
+        "Small-value side follows the filter: AVGS while the signal is on, IB01 while it is off.",
+        "Stop adding to AVUV and VOO; keep US-listed holdings under about US$60k. Raise the monthly amount with every pay rise."] },
+      { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
+        `Build a cash buffer of 2–3 years of retirement spending in IB01.`, "Keep the rest in the plan and keep following the signal.",
+        "Re-check the target against your expected spending."] },
+      { name: "Retired", when: isFinite(fa) ? `from about ${fa.toFixed(0)}` : "at the target", on: isFinite(fa) && nowAge >= fa, items: [
+        `Withdraw about 3.3% a year (${hk(S.target * 0.033 / 12)} a month on ${hk(S.target)}).`,
+        "Take spending from the cash buffer after bad years.", "MPF becomes available at 65."] },
+    ];
+    const box = $("phases"); box.textContent = "";
+    P.forEach(p => {
+      const d = document.createElement("div"); d.className = "phase" + (p.on ? " now" : "");
+      if (p.on) { const b = document.createElement("span"); b.className = "badge"; b.textContent = "You are here"; d.appendChild(b); }
+      const h = document.createElement("h3"); h.textContent = p.name; d.appendChild(h);
+      const w = document.createElement("span"); w.className = "when"; w.textContent = "age " + p.when; d.appendChild(w);
+      const ul = document.createElement("ul"); p.items.forEach(t => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); }); d.appendChild(ul);
+      box.appendChild(d);
+    });
+    const supp = S.target * 0.033 / 12;
+    $("spendNote").textContent = `At a 3.3% withdrawal rate, ${hk(S.target)} supports about ${hkFull(supp)} a month in today's money (${hkFull(S.target * 0.04 / 12)} at 4%)` + (S.living > 0 ? `: ${(supp / S.living).toFixed(1)}× your current living costs of ${hkFull(S.living)}.` : ".");
+  }
+
+  // ---------- forms ----------
+  const F = { pAge: "age", pAgeDate: "ageDate", pGrad: "gradAge", pStudent: "studentMonthly", pMonthly: "monthly", pLiving: "living", pTarget: "target", pReturn: "realReturn", pInfl: "inflation", pStart: "startBalance", pSv: "svShare" };
+  function fillPlanForm() { for (const id in F) { const inp = $(id); if (document.activeElement !== inp) inp.value = S[F[id]]; } }
+  function readPlanForm() {
+    const next = { ...S };
+    for (const id in F) {
+      const raw = $(id).value;
+      if (id === "pAgeDate") { if (raw) next.ageDate = raw; continue; }
+      if (raw === "" || !isFinite(Number(raw))) continue;          // half-typed field: keep the last good value
+      next[F[id]] = Number(raw);
+    }
+    return next.target > 0 ? next : null;
+  }
+  function renderPlanOutputs() { renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
+  let planTimer = null;
+  async function savePlan(next) {
+    if (!db || !canWrite) { $("pStatus").textContent = "Showing your changes for this visit only; couldn't save on this device."; return; }
+    $("pStatus").textContent = "Saving…";
+    try { await db.doc("plan/settings").set(next); $("pStatus").textContent = "Plan saved."; }
+    catch (e) { $("pStatus").textContent = e && e.code === "invalid_argument" ? "You can view this plan but not change it." : "Couldn't save the plan. Try again in a moment."; }
+  }
+  // Recalculate as you type; save automatically a moment after you stop.
+  $("planForm").addEventListener("input", () => {
+    const next = readPlanForm(); if (!next) { $("pStatus").textContent = "Enter a target above zero."; return; }
+    S = next; renderPlanOutputs(); $("pStatus").textContent = "Updated. Saving shortly…";
+    clearTimeout(planTimer); planTimer = setTimeout(() => { planTimer = null; savePlan(S); }, 900);
+  });
+  $("planForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); clearTimeout(planTimer); planTimer = null;
+    const next = readPlanForm();
+    if (!next) { $("pStatus").textContent = "Enter a target above zero."; return; }
+    S = next; renderAll();
+    await savePlan(next);
+  });
+  // ---------- holdings and this month's buy ----------
+  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hI500: "I500", hAVUV: "AVUV", hAVGS: "AVGS", hUSSC: "USSC", hIB01: "IB01" };
+  let HOLD = { VUAA: 0, VOO: 0, I500: 0, AVUV: 0, AVGS: 0, USSC: 0, IB01: 0 };   // shares
+  let MKT = null;                                                                    // data/market.json
+  const fxRate = () => (MKT && +MKT.usdhkd > 0 ? +MKT.usdhkd : 7.8);
+  const px = t => (MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN);
+  const vals = (h = HOLD) => { const o = {}; for (const t in HOLD) o[t] = (+h[t] || 0) * (isFinite(px(t)) ? px(t) : 0); return o; };
+  const missingPx = (h = HOLD) => Object.keys(HOLD).filter(t => (+h[t] || 0) > 0 && !isFinite(px(t)));
+  const sigOn = () => (MKT && MKT.signal && typeof MKT.signal.on === "boolean" ? MKT.signal.on : null);
+  const usd = v => "US$" + Number(v || 0).toLocaleString("en", { maximumFractionDigits: 0 });
+  const usd2 = v => "US$" + Number(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fillHoldForm() { for (const id in H_IDS) { const inp = $(id); if (document.activeElement !== inp) inp.value = HOLD[H_IDS[id]] ? HOLD[H_IDS[id]] : ""; } }
+  function renderBuy() {
+    const V = vals();
+    const sp = V.VUAA + V.VOO + V.I500;
+    const sv = V.AVUV + V.AVGS + V.USSC + V.IB01;
+    const tot = sp + sv, student = ageAt(today()) < S.gradAge;
+    const usNow = V.VOO + V.AVUV;
+    // Which listing: US funds only while studying AND US-listed holdings are still small; otherwise the Irish funds.
+    const useUS = student && usNow < 3000;
+    const tgt = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70)) / 100;
+    const svSide = tot <= 0 ? tgt >= 0.5 : sv / tot < tgt;
+    const sig = sigOn(), parkSV = !student && svSide && sig === false;            // filter applies after graduation
+    const fund = parkSV ? "IB01" : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "VOO" : "VUAA");
+    const side = tot <= 0 ? `No holdings yet, so start with the bigger side of your ${Math.round(tgt * 100)}/${Math.round(100 - tgt * 100)} split.`
+      : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of your holdings; your target is ${Math.round(tgt * 100)}%.`
+               : `The S&P 500 is ${(sp / tot * 100).toFixed(0)}% of your holdings; your target is ${Math.round(100 - tgt * 100)}%.`;
+    const venue = useUS ? `You're ${ageAt(today()).toFixed(1)} and still studying, and your US-listed funds (${usd(usNow)}) are under US$3,000, so the cheaper US-listed fund wins.`
+      : student ? `Your US-listed funds (${usd(usNow)}) have passed US$3,000, so new money goes to the Irish fund to cut dividend tax. Move AVUV and VOO across at your January check-in.`
+      : parkSV ? `You've passed graduation age (${S.gradAge}) and the market signal is OFF, so park the small-value money in IB01 until it turns back on.`
+      : `You've passed graduation age (${S.gradAge}), so buy the Irish fund.${svSide ? (sig === null ? " Check the market signal first: IB01 if it's off." : " The market signal is ON.") : " I500 works too."}`;
+    const studentSig = student && sig === false ? " The market signal is OFF, but while you're studying you skip the filter: IB01 trades cost too much at this size." : "";
+    $("buyFund").textContent = fund; $("buyWhy").textContent = side + " " + venue + studentSig;
+    $("buySub").textContent = "";
+    for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
+    const box = $("sides"); box.textContent = "";
+    const tg = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70));
+    [[`S&P 500 · target ${100 - tg}%`, sp, "sp", "VUAA + VOO + I500"], [`Small value · target ${tg}%`, sv, "", "AVUV + AVGS + USSC + IB01"]].forEach(([lab, v, cls, sub]) => {
+      const row = document.createElement("div"); row.className = "side";
+      const l = document.createElement("div"); l.textContent = lab; l.title = sub;
+      const tr = document.createElement("div"); tr.className = "track"; const f = document.createElement("div"); f.className = "fill " + cls; f.style.width = (tot > 0 ? v / tot * 100 : 0) + "%"; tr.appendChild(f);
+      const a = document.createElement("div"); a.className = "amt"; a.textContent = `${usd(v)} · ${tot > 0 ? (v / tot * 100).toFixed(0) : 0}%`;
+      row.append(l, tr, a); box.appendChild(row);
+    });
+    const us = V.VOO + V.AVUV, note = $("usNote");
+    note.className = "small " + (us > 50000 ? "warn" : "muted");
+    note.textContent = `${missingPx().length ? "No price yet for " + missingPx().join(", ") + ", so it counts as 0. " : ""}Total ${usd(tot)} (about ${hkFull(tot * fxRate())} at HK$${fxRate()}). US-listed holdings (VOO + AVUV): ${usd(us)}. ${us > 3000 ? "That's above US$3,000, so at your next yearly check-in move AVUV into AVGS (or USSC to stay US-only) and VOO into VUAA." : "Move them into the Irish funds once a year after they pass about US$3,000."}${us > 50000 ? " You're nearing the roughly US$60,000 US estate-tax threshold." : ""}`;
+  }
+  $("hForm").addEventListener("input", () => {           // preview the buy as you type
+    const next = {}; for (const id in H_IDS) next[H_IDS[id]] = Math.max(0, Number($(id).value || 0));
+    HOLD = next; renderBuy();
+  });
+  $("hForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const next = {}; for (const id in H_IDS) next[H_IDS[id]] = Math.max(0, Number($(id).value || 0));
+    HOLD = next; renderBuy();
+    const V = vals(next), usdTot = Object.values(V).reduce((a, b) => a + b, 0), miss = missingPx(next);
+    if (!MKT) { $("hStatus").textContent = "Prices haven't loaded yet. Check your connection and reload."; return; }
+    if (miss.length) { $("hStatus").textContent = `No price today for ${miss.join(", ")}, so the check-in wasn't saved. Try again tomorrow.`; return; }
+    if (!(usdTot > 0)) { $("hStatus").textContent = "Enter your shares first."; return; }
+    if (!db || !canWrite) { $("hStatus").textContent = "Saving isn't available in this view, so this check-in wasn't kept."; return; }
+    const rate = fxRate(), date = today(), bal = Math.round(usdTot * rate * 100) / 100, note = $("hNote").value.trim();
+    $("hSave").disabled = true; $("hStatus").textContent = "Saving…";
+    try {
+      await db.doc("plan/shares").set({ ...next, updated: date });
+      // one check-in per day: saving again today replaces today's entry
+      await db.collection("checkins").doc("c" + date.replace(/-/g, "")).set({ date, balance: bal, shares: next, usd: V, usdhkd: rate, note, createdAt: new Date().toISOString() });
+      $("hStatus").textContent = `Check-in saved for today: ${hkExact(bal)} (US$${usdTot.toLocaleString("en", { maximumFractionDigits: 2 })} at HK$${rate}).`;
+      $("hNote").value = "";
+    } catch (e) { $("hStatus").textContent = e && e.code === "quota_exceeded" ? "The tracker is full; delete some old check-ins first." : "Couldn't save. Try again in a moment."; }
+    $("hSave").disabled = false;
+  });
+
+  function renderSignal() {
+    const b = $("sigBadge"), sg = MKT && MKT.signal;
+    if (!sg) { b.className = "sigbadge"; b.textContent = "no data"; $("sigText").textContent = MKT ? "The S&P 500 data didn't load in the last update." : "Couldn't load market data. Check your connection and reload."; $("sigMeta").textContent = ""; return; }
+    b.className = "sigbadge " + (sg.on ? "on" : "off"); b.textContent = sg.on ? "Signal ON" : "Signal OFF";
+    const pct = (sg.close / sg.sma200 - 1) * 100;
+    $("sigText").textContent = `S&P 500 ${sg.close.toLocaleString("en")} is ${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? "above" : "below"} its 200-day average (${sg.sma200.toLocaleString("en")}), and 20-day volatility is ${(sg.vol20 * 100).toFixed(1)}% (${sg.calm ? "under" : "over"} 25%). `
+      + (sg.pending ? `Today's reading says ${sg.raw ? "ON" : "OFF"}; it flips if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`)
+      + (sg.on ? " Small-value buys are allowed." : " After graduation, small-value money waits in IB01 until it turns back on.");
+    const age = (Date.now() - new Date(MKT.updated)) / 864e5;
+    $("sigMeta").textContent = `Market close ${sg.date} · updated ${MKT.updated.slice(0, 16).replace("T", " ")} UTC${age > 4 ? " · data is " + Math.floor(age) + " days old" : ""}${MKT.errors && MKT.errors.length ? " · some prices missing" : ""}`;
+  }
+  async function loadMarket() {
+    try {
+      const r = await fetch("data/market.json?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      MKT = await r.json();
+    } catch (e) { MKT = null; }
+    renderSignal(); renderBuy();
+  }
+  function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
+  renderAll();
+
+  // ---------- storage: this browser only ----------
+  function localDb() {
+    const KEY = "fire-tracker-hk10m-v1";
+    let state = null;
+    try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+    if (!state || !state.docs) {
+      state = { docs: {
+        "plan/settings": { age: 18, ageDate: "2026-09-12", gradAge: 23, studentMonthly: 1200, monthly: 25000, living: 10000, target: 10000000, realReturn: 5, inflation: 2.5, startBalance: 0, svShare: 70 } },
+        checkins: {} };
+    }
+    let ok = true;
+    const listeners = [];
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { ok = false; } listeners.forEach(f => f()); };
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { ok = false; }
+    return {
+      ok: () => ok,
+      doc(path) { return {
+        set: async d => { state.docs[path] = JSON.parse(JSON.stringify(d)); save(); },
+        onSnapshot(cb) { const f = () => { const d = state.docs[path]; cb({ id: path.split("/").pop(), exists: d !== undefined, data: () => d }); }; listeners.push(f); f(); return () => {}; } }; },
+      collection() { return {
+        doc: id => ({ set: async d => { state.checkins[id] = JSON.parse(JSON.stringify(d)); save(); }, delete: async () => { delete state.checkins[id]; save(); } }),
+        orderBy() { return { onSnapshot(cb) { const f = () => { const docs = Object.entries(state.checkins).sort((a, b) => (a[1].date < b[1].date ? -1 : a[1].date > b[1].date ? 1 : 0)).map(([id, d]) => ({ id, data: () => d })); cb({ docs }); }; listeners.push(f); f(); return () => {}; } }; } }; },
+      exportJSON: () => JSON.stringify(state, null, 1),
+      importJSON: t => { const s = JSON.parse(t); if (!s || typeof s.docs !== "object" || typeof s.checkins !== "object") throw new Error("bad"); state = s; save(); },
+    };
+  }
+  loadMarket();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) loadMarket(); });
+  db = localDb();
+  if (!db.ok()) { $("ciStatus").textContent = "This browser isn't letting the page save data (private mode or blocked storage). Changes will be lost when you close it."; }
+  db.doc("plan/settings").onSnapshot(s => { if (planTimer) return; if (s.exists) { S = { ...DEFAULTS, ...s.data() }; renderAll(); } });
+  db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; fillHoldForm(); renderBuy(); } });
+  db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });
+  $("bkDown").addEventListener("click", () => {
+    try {
+      const blob = new Blob([db.exportJSON()], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fire-tracker-backup-" + today() + ".json";
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      $("bkStatus").textContent = "Backup downloaded.";
+    } catch (e) { $("bkStatus").textContent = "Couldn't create the backup file in this browser."; }
+  });
+  $("bkFile").addEventListener("change", ev => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { try { db.importJSON(String(rd.result)); $("bkStatus").textContent = "Backup restored."; } catch (e) { $("bkStatus").textContent = "That file isn't a backup from this tracker."; } ev.target.value = ""; };
+    rd.readAsText(f);
+  });
+})();
+</script>
+
+</body></html>
