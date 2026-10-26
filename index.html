@@ -290,7 +290,10 @@ td.r, th.r { text-align: right; }
 
   // ---------- plan maths (real terms, monthly compounding) ----------
   const ageAt = d => S.age + (new Date(d) - new Date(S.ageDate)) / YR;
-  const contribAt = a => (a < S.gradAge ? S.studentMonthly : S.monthly);
+  const contribAt = a => (a < S.gradAge ? S.studentMonthly : S.monthly);          // in today's money (the plan maths is all real)
+  // What to actually pay in this year: today's-money amount raised by inflation once a year from the plan start, rounded to HK$100.
+  const yearsIn = () => Math.max(0, Math.floor((new Date(today()) - new Date(S.ageDate)) / YR));
+  const payNow = real => Math.round(real * Math.pow(1 + S.inflation / 100, yearsIn()) / 100) * 100;
   function path(startAge, startBal, rPct, untilAge) {
     const rm = Math.pow(1 + rPct / 100, 1 / 12) - 1; const pts = [[startAge, startBal]];
     let a = startAge, b = startBal;
@@ -440,13 +443,13 @@ td.r, th.r { text-align: right; }
     const yrs = S.living * 12;
     const P = [
       { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
-        `${hkFull(S.studentMonthly)} a month into the fund shown above.`,
+        `${hkFull(payNow(S.studentMonthly))} a month into the fund shown above, up ${S.inflation}% each year.`,
         "Each January: once AVUV + VOO pass US$3,000, move them to AVGS and VUAA.",
         "The signal filter starts once your small-value funds pass US$1,500.",
         "Protect your grades first."] },
       { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
         `Emergency fund first: ${hk(yrs / 2)} in IB01 (the tracker shows it).`,
-        `Then ${hkFull(S.monthly)} a month into the fund shown above.`,
+        `Then ${hkFull(S.monthly)} a month in today's money, up ${S.inflation}% each year.`,
         "Raise the amount with every pay rise."] },
       { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
         "Build 2–3 years of spending in IB01 as a cash buffer.", "Re-check your retirement income."] },
@@ -526,7 +529,7 @@ td.r, th.r { text-align: right; }
     const sig = sigOn(), risk = V.AVUV + V.AVGS + V.USSC;
     const filterOn = !student || risk + V.IB01 >= FILTER_MIN;                      // students: only once the fees are worth it
     const parkSV = filterOn && svSide && sig === false;
-    const efNeed = student ? 0 : 6 * S.living, efHave = V.EF * fxRate(), efFirst = efHave < efNeed;
+    const efNeed = student ? 0 : payNow(6 * S.living), efHave = V.EF * fxRate(), efFirst = efHave < efNeed;
     const code = efFirst ? "EF" : parkSV ? "IB01" : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "VOO" : "VUAA");
     const T = Math.round(tgt * 100);
     const why = efFirst ? `Emergency fund first: ${hk(efHave)} of ${hk(efNeed)} (6 months of living costs). It sits outside the plan.`
@@ -535,7 +538,8 @@ td.r, th.r { text-align: right; }
         + (parkSV ? " Signal is OFF: park it in IB01." : useUS ? " US-listed while studying: cheaper trades."
            : student ? " US funds have passed US$3,000, so buy the Irish fund." : "");
     $("buyFund").textContent = code === "EF" ? "IB01" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
-    $("buySub").textContent = "";
+    const realAmt = contribAt(ageAt(today())), pay = payNow(realAmt);
+    $("buySub").textContent = `Invest ${hkFull(pay)} this month` + (pay !== realAmt ? ` (${hkFull(realAmt)} raised ${S.inflation}% a year for inflation since ${S.ageDate.slice(0, 4)}).` : `. It goes up ${S.inflation}% each year to keep pace with inflation.`);
     renderAct(V, sig, filterOn, risk, useUS);
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
     const box = $("sides"); box.textContent = "";
@@ -631,7 +635,7 @@ td.r, th.r { text-align: right; }
   const FEE = t => (t === "VOO" || t === "AVUV" ? 0.35 : 1.70);
   const fname = t => (t === "EF" ? "IB01 (emergency fund)" : t);
   function bfEstimate() {
-    const t = $("bfFund").value, p = px(t), hkd = contribAt(ageAt(today())), usdAmt = hkd / fxRate();
+    const t = $("bfFund").value, p = px(t), hkd = payNow(contribAt(ageAt(today()))), usdAmt = hkd / fxRate();
     const est = isFinite(p) ? Math.max(0, (usdAmt - FEE(t)) / p) : NaN;
     $("bfHint").textContent = isFinite(p)
       ? `Estimate: ${hkFull(hkd)} is about ${usd2(usdAmt)} at HK$${fxRate()} per US$; less about US$${FEE(t).toFixed(2)} commission, at ${usd2(p)} a share, that's about ${est.toFixed(4)} shares. Type the exact number from IBKR.`
