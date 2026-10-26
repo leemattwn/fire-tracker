@@ -105,7 +105,6 @@ td.r, th.r { text-align: right; }
   <header>
     <span class="eyebrow">Retirement plan · all figures in today's HK dollars · saved on this device</span>
     <h1 id="title">Your plan</h1>
-    <p class="lede" id="lede">Each month: buy what the tracker says in IBKR, then tap “I bought it”. Prices update every weekday and your monthly check-in is recorded for you.</p>
   </header>
 
   <section class="panel" id="setup" aria-labelledby="setupTitle">
@@ -136,6 +135,7 @@ td.r, th.r { text-align: right; }
       <label for="shAVGS">AVGS<input id="shAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvAVGS">—</span></label>
       <label for="shUSSC">USSC<input id="shUSSC" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvUSSC">—</span></label>
       <label for="shIB01">IB01, parked<input id="shIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvIB01">—</span></label>
+      <label for="shEF">IB01, emergency fund<input id="shEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvEF">—</span></label>
       <p class="full small" id="sHoldNote"></p>
       <div class="btnrow"><button type="submit" id="setupGo">Start my plan</button><button type="button" class="ghost" id="setupCancel" hidden>Cancel</button></div>
     </form>
@@ -154,12 +154,13 @@ td.r, th.r { text-align: right; }
     <div class="sighead"><h2 id="sigTitle">Market signal</h2><span class="sigbadge" id="sigBadge">loading…</span></div>
     <p class="small" id="sigText">Loading today's market data…</p>
     <p class="small muted" id="sigMeta"></p>
+    <p class="small muted">ON = S&amp;P 500 above its 200-day average and volatility under 25%, two closes in a row. After you start work, small-value money goes to IB01 while it's OFF.</p>
   </section>
 
   <section class="panel" aria-labelledby="buyTitle">
     <div style="display:flex;flex-direction:column;gap:6px">
       <h2 id="buyTitle">This month</h2>
-      <p class="small muted">Put HKD into IBKR and buy the fund below; IBKR converts the HKD to US dollars for you. Then tap “I bought it” and type the shares from your trade confirmation. Your check-in for the month is recorded automatically.</p><p class="small muted" id="buySub"></p>
+      <p class="small muted">Pay HKD into IBKR (it converts to US$ for you), buy this fund on the 15th, then tap “I bought it”.</p><p class="small muted" id="buySub"></p>
     </div>
     <div class="buyrow">
       <div class="buycall"><span class="eyebrow">This month, buy</span><span class="v" id="buyFund">AVUV</span><span class="s" id="buyWhy">Loading…</span>
@@ -167,7 +168,7 @@ td.r, th.r { text-align: right; }
       <div class="sides" id="sides"></div>
     </div>
     <form id="boughtForm" class="boughtform" autocomplete="off" hidden>
-      <label for="bfFund">Fund<select id="bfFund"><option value="VUAA">VUAA</option><option value="VOO">VOO</option><option value="I500">I500</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="USSC">USSC</option><option value="IB01">IB01</option></select></label>
+      <label for="bfFund">Fund<select id="bfFund"><option value="VUAA">VUAA</option><option value="VOO">VOO</option><option value="I500">I500</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="USSC">USSC</option><option value="IB01">IB01 (parked, signal off)</option><option value="EF">IB01 (emergency fund)</option></select></label>
       <label for="bfShares">Shares bought<input id="bfShares" type="number" min="0" step="any" inputmode="decimal"></label>
       <p class="full hint" id="bfHint"></p>
       <div class="btnrow"><button type="submit">Add to my holdings</button><button type="button" class="ghost" id="bfCancel">Cancel</button></div>
@@ -183,6 +184,7 @@ td.r, th.r { text-align: right; }
         <label for="hAVGS">AVGS<input id="hAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVGS">—</span></label>
         <label for="hUSSC">USSC<input id="hUSSC" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vUSSC">—</span></label>
         <label for="hIB01">IB01, parked<input id="hIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIB01">—</span></label>
+        <label for="hEF">IB01, emergency fund<input id="hEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vEF">—</span></label>
       </form>
     </details>
     <p class="small muted" id="usNote"></p>
@@ -190,7 +192,7 @@ td.r, th.r { text-align: right; }
 
   <section class="panel" aria-labelledby="ciTitle">
     <h2 id="ciTitle">Check-ins</h2>
-    <p class="small muted">One check-in a month, recorded automatically from your shares at that day's prices and USD/HKD rate. Opening the page again in the same month refreshes it. The page adjusts for inflation.</p>
+    <p class="small muted">Recorded automatically each month from your shares at that day's prices.</p>
     <p class="status" id="ciStatus" role="status"></p>
     <div id="ciList"><div class="empty">No check-ins yet. Save your first monthly check-in to start tracking against the plan.</div></div>
   </section>
@@ -198,7 +200,6 @@ td.r, th.r { text-align: right; }
   <section class="panel" aria-labelledby="chartTitle">
     <div style="display:flex;flex-direction:column;gap:6px">
       <h2 id="chartTitle">Path to the target</h2>
-      <p class="small muted" id="chartSub">Projected balance by age at 4%, your assumed return and 8% a year after inflation, with your check-ins as dots.</p>
     </div>
     <div class="legend"><span><i></i>Your assumed return</span><span><i class="dash"></i>4% and 8% real</span><span><i class="tgt"></i>Target</span><span><i class="dot"></i>Check-ins (today's dollars)</span></div>
     <div class="chartbox" id="chart"></div>
@@ -207,7 +208,7 @@ td.r, th.r { text-align: right; }
   <section class="panel" aria-labelledby="phTitle">
     <h2 id="phTitle">What to do in each phase</h2>
     <div class="phases" id="phases"></div>
-    <p class="note">The signal: the S&amp;P 500 closes above its 200-day average and its 20-day volatility is under 25%, two closes in a row. AVGS, VUAA and IB01 are Irish-domiciled UCITS funds on the London Stock Exchange. Projections assume steady returns; real markets will swing well above and below these lines. This page is a planning aid, not financial advice.</p>
+    <p class="note">Projections assume steady returns; real markets swing well above and below these lines. A planning aid, not financial advice.</p>
   </section>
 
   <section class="panel" aria-labelledby="planTitle">
@@ -314,14 +315,14 @@ td.r, th.r { text-align: right; }
     }
     const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a);
     $("sLatest").textContent = hk(real);
-    $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)} · ${hkExact(latest.balance)} as entered`;
+    $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)}`;
     $("sPlan").textContent = hk(plan);
     const gap = real - plan, el = $("sGap");
     if (plan <= 0) { el.className = "pill"; el.textContent = "plan just started"; }
     else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hk(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
     const fa = fiAge(a, real, S.realReturn);
     $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
-    $("sFiSub").textContent = isFinite(fa) ? `${fa <= 40 ? "before" : "after"} 40 at ${S.realReturn}% real · plan: ${isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"}` : "raise the monthly amount or return";
+    $("sFiSub").textContent = isFinite(fa) ? `at ${S.realReturn}% a year after inflation` : "raise the monthly amount or return";
     const p = real / S.target; $("sAcuity").textContent = acuity(p); drawSnellen(p);
   }
 
@@ -425,21 +426,17 @@ td.r, th.r { text-align: right; }
     const yrs = S.living * 12;
     const P = [
       { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
-        `Invest ${hkFull(S.studentMonthly)} a month on the 15th, one trade: AVUV or VOO, whichever side is below target (${S.svShare}% small value, ${100 - S.svShare}% S&P 500). The tracker picks it for you.`,
-        "Pay in HKD; IBKR converts it to US dollars automatically when you buy.",
-        "Each January check-in: once AVUV + VOO pass about US$3,000, move AVUV into AVGS (or USSC for US-only) and VOO into VUAA.",
-        "Keep VUAA; it counts toward the S&P 500 side. Skip the filter while the balance is small. Protect your grades first."] },
+        `${hkFull(S.studentMonthly)} a month into the fund shown above.`,
+        "Each January: once AVUV + VOO pass US$3,000, move them to AVGS and VUAA.",
+        "Protect your grades first."] },
       { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
-        `First build an emergency fund of 6 months' costs (${hk(yrs / 2)}) in IB01.`,
-        `Then invest ${hkFull(S.monthly)} a month on the 15th into whichever side is below target: VUAA (or I500) for the S&P 500, AVGS (or USSC) for small value.`,
-        "Small-value side follows the filter: AVGS while the signal is on, IB01 while it is off.",
-        "Stop adding to AVUV and VOO; keep US-listed holdings under about US$60k. Raise the monthly amount with every pay rise."] },
+        `Emergency fund first: ${hk(yrs / 2)} in IB01 (the tracker shows it).`,
+        `Then ${hkFull(S.monthly)} a month into the fund shown above.`,
+        "Raise the amount with every pay rise."] },
       { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
-        `Build a cash buffer of 2–3 years of retirement spending in IB01.`, "Keep the rest in the plan and keep following the signal.",
-        "Re-check the target against your expected spending."] },
+        "Build 2–3 years of spending in IB01 as a cash buffer.", "Re-check your retirement income."] },
       { name: "Retired", when: isFinite(fa) ? `from about ${fa.toFixed(0)}` : "at the target", on: isFinite(fa) && nowAge >= fa, items: [
-        `Withdraw about ${S.swr}% a year: ${hkFull(S.retireIncome)} a month in today's money from ${hk(S.target)}.`,
-        "Take spending from the cash buffer after bad years.", "MPF becomes available at 65."] },
+        `Withdraw ${hkFull(S.retireIncome)} a month (${S.swr}% a year).`, "Spend from the buffer after bad years.", "MPF from 65."] },
     ];
     const box = $("phases"); box.textContent = "";
     P.forEach(p => {
@@ -489,11 +486,12 @@ td.r, th.r { text-align: right; }
     await savePlan(next);
   });
   // ---------- holdings and this month's buy ----------
-  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hI500: "I500", hAVUV: "AVUV", hAVGS: "AVGS", hUSSC: "USSC", hIB01: "IB01" };
-  let HOLD = { VUAA: 0, VOO: 0, I500: 0, AVUV: 0, AVGS: 0, USSC: 0, IB01: 0 };   // shares
+  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hI500: "I500", hAVUV: "AVUV", hAVGS: "AVGS", hUSSC: "USSC", hIB01: "IB01", hEF: "EF" };
+  let HOLD = { VUAA: 0, VOO: 0, I500: 0, AVUV: 0, AVGS: 0, USSC: 0, IB01: 0, EF: 0 };   // shares; EF = IB01 held as the emergency fund (outside the plan)
   let MKT = null;                                                                    // data/market.json
   const fxRate = () => (MKT && +MKT.usdhkd > 0 ? +MKT.usdhkd : 7.8);
-  const px = t => (MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN);
+  const px = t => { if (t === "EF") t = "IB01"; return MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN; };
+  const planUsd = V => Object.entries(V).reduce((a, [k, v]) => a + (k === "EF" ? 0 : v), 0);   // emergency fund is not part of the plan
   const vals = (h = HOLD) => { const o = {}; for (const t in HOLD) o[t] = (+h[t] || 0) * (isFinite(px(t)) ? px(t) : 0); return o; };
   const missingPx = (h = HOLD) => Object.keys(HOLD).filter(t => (+h[t] || 0) > 0 && !isFinite(px(t)));
   const sigOn = () => (MKT && MKT.signal && typeof MKT.signal.on === "boolean" ? MKT.signal.on : null);
@@ -511,16 +509,16 @@ td.r, th.r { text-align: right; }
     const tgt = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70)) / 100;
     const svSide = tot <= 0 ? tgt >= 0.5 : sv / tot < tgt;
     const sig = sigOn(), parkSV = !student && svSide && sig === false;            // filter applies after graduation
-    const fund = parkSV ? "IB01" : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "VOO" : "VUAA");
-    const side = tot <= 0 ? `No holdings yet, so start with the bigger side of your ${Math.round(tgt * 100)}/${Math.round(100 - tgt * 100)} split.`
-      : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of your holdings; your target is ${Math.round(tgt * 100)}%.`
-               : `The S&P 500 is ${(sp / tot * 100).toFixed(0)}% of your holdings; your target is ${Math.round(100 - tgt * 100)}%.`;
-    const venue = useUS ? `You're ${ageAt(today()).toFixed(1)} and still studying, and your US-listed funds (${usd(usNow)}) are under US$3,000, so the cheaper US-listed fund wins.`
-      : student ? `Your US-listed funds (${usd(usNow)}) have passed US$3,000, so new money goes to the Irish fund to cut dividend tax. Move AVUV and VOO across at your January check-in.`
-      : parkSV ? `You've passed graduation age (${S.gradAge}) and the market signal is OFF, so park the small-value money in IB01 until it turns back on.`
-      : `You've passed graduation age (${S.gradAge}), so buy the Irish fund.${svSide ? (sig === null ? " Check the market signal first: IB01 if it's off." : " The market signal is ON.") : " I500 works too."}`;
-    const studentSig = student && sig === false ? " The market signal is OFF, but while you're studying you skip the filter: IB01 trades cost too much at this size." : "";
-    $("buyFund").textContent = fund; $("buyWhy").textContent = side + " " + venue + studentSig;
+    const efNeed = student ? 0 : 6 * S.living, efHave = V.EF * fxRate(), efFirst = efHave < efNeed;
+    const code = efFirst ? "EF" : parkSV ? "IB01" : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "VOO" : "VUAA");
+    const T = Math.round(tgt * 100);
+    const why = efFirst ? `Emergency fund first: ${hk(efHave)} of ${hk(efNeed)} (6 months of living costs). It sits outside the plan.`
+      : (tot <= 0 ? `Start with the bigger side of your ${T}/${100 - T} split.`
+         : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of the plan; target ${T}%.` : `S&P 500 is ${(sp / tot * 100).toFixed(0)}% of the plan; target ${100 - T}%.`)
+        + (useUS ? " US-listed while studying: cheaper trades."
+           : student ? ` US funds have passed US$3,000, so buy the Irish fund.`
+           : parkSV ? " Signal is OFF: park it in IB01." : "");
+    $("buyFund").textContent = code === "EF" ? "IB01" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
     $("buySub").textContent = "";
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
     const box = $("sides"); box.textContent = "";
@@ -534,7 +532,11 @@ td.r, th.r { text-align: right; }
     });
     const us = V.VOO + V.AVUV, note = $("usNote");
     note.className = "small " + (us > 50000 ? "warn" : "muted");
-    note.textContent = `${missingPx().length ? "No price yet for " + missingPx().join(", ") + ", so it counts as 0. " : ""}Total ${usd(tot)} (about ${hkFull(tot * fxRate())} at HK$${fxRate()}). US-listed holdings (VOO + AVUV): ${usd(us)}. ${us > 3000 ? "That's above US$3,000, so at your next yearly check-in move AVUV into AVGS (or USSC to stay US-only) and VOO into VUAA." : "Move them into the Irish funds once a year after they pass about US$3,000."}${us > 50000 ? " You're nearing the roughly US$60,000 US estate-tax threshold." : ""}`;
+    const miss = missingPx();
+    note.textContent = (miss.length ? `No price today for ${miss.join(", ")}. ` : "")
+      + (us > 3000 ? `US-listed funds (VOO + AVUV) are ${usd(us)}: at your January check-in, move AVUV to AVGS and VOO to VUAA.` : "")
+      + (us > 50000 ? " Keep US-listed holdings under about US$60,000 (US estate tax)." : "")
+      + (V.EF > 0 ? ` Emergency fund: ${hk(V.EF * fxRate())}, not counted in the plan.` : "");
   }
   let holdTimer = null;
   async function saveShares() { if (db) await db.doc("plan/shares").set({ ...HOLD, updated: today() }); }
@@ -548,7 +550,7 @@ td.r, th.r { text-align: right; }
   let ciBusy = false;
   async function autoCheckin(extra) {
     if (!MKT || !db || !S.setupDone || ciBusy) return;
-    const V = vals(), usdTot = Object.values(V).reduce((a, b) => a + b, 0);
+    const V = vals(), usdTot = planUsd(V);
     if (!(usdTot > 0) || missingPx().length) return;
     const rate = fxRate(), date = today(), mon = date.slice(0, 7), id = "m" + mon.replace("-", "");
     const bal = Math.round(usdTot * rate * 100) / 100, prev = checkins.find(c => c.id === id);
@@ -563,6 +565,7 @@ td.r, th.r { text-align: right; }
 
   // ---------- "I bought it" ----------
   const FEE = t => (t === "VOO" || t === "AVUV" ? 0.35 : 1.70);
+  const fname = t => (t === "EF" ? "IB01 (emergency fund)" : t);
   function bfEstimate() {
     const t = $("bfFund").value, p = px(t), hkd = contribAt(ageAt(today())), usdAmt = hkd / fxRate();
     const est = isFinite(p) ? Math.max(0, (usdAmt - FEE(t)) / p) : NaN;
@@ -572,7 +575,7 @@ td.r, th.r { text-align: right; }
     return est;
   }
   $("boughtBtn").addEventListener("click", () => {
-    $("bfFund").value = $("buyFund").textContent;
+    $("bfFund").value = $("buyFund").dataset.code || $("buyFund").textContent;
     const est = bfEstimate(); $("bfShares").value = isFinite(est) ? est.toFixed(4) : "";
     $("boughtForm").hidden = false; $("bfShares").focus(); $("bfShares").select();
   });
@@ -585,8 +588,8 @@ td.r, th.r { text-align: right; }
     HOLD = { ...HOLD, [t]: Math.round(((+HOLD[t] || 0) + n) * 1e6) / 1e6 };
     $("boughtForm").hidden = true; fillHoldForm(); renderBuy();
     try {
-      await saveShares(); await autoCheckin(`Bought ${n} ${t}`);
-      $("hStatus").textContent = `Added ${n} ${t}. You now hold ${HOLD[t]} ${t}; this month's check-in is updated.`;
+      await saveShares(); if (t !== "EF") await autoCheckin(`Bought ${n} ${t}`);
+      $("hStatus").textContent = `Added ${n} ${fname(t)}. You now hold ${HOLD[t]}.`;
     } catch (e) { $("hStatus").textContent = "Couldn't save. Try again in a moment."; }
   });
 
@@ -604,7 +607,7 @@ td.r, th.r { text-align: right; }
     $("sTargetNote").textContent = n.retireIncome > 0 && n.swr > 0
       ? `You'll need about ${hk(n.target)} in today's money: ${hkFull(n.retireIncome)} × 12 ÷ ${n.swr}%. ${isFinite(n.age) ? `You're ${n.age.toFixed(1)} today.` : ""}`
       : "Enter a retirement income and withdrawal rate.";
-    const V = vals(sh), tot = Object.values(V).reduce((a, b) => a + b, 0);
+    const V = vals(sh), tot = planUsd(V);
     for (const t in HOLD) $("shv" + t).textContent = isFinite(px(t)) ? (sh[t] > 0 ? `${usd2(V[t])} · ${usd2(px(t))} each` : `${usd2(px(t))} each`) : (MKT ? "no price today" : "loading price…");
     $("sHoldNote").textContent = MKT ? `Starting balance: ${usd2(tot)}, about ${hkFull(tot * fxRate())} at HK$${fxRate()} per US$.` : "Loading prices… your starting balance appears here.";
   }
@@ -626,14 +629,13 @@ td.r, th.r { text-align: right; }
     const { s, sh } = readSetup();
     if (!s.dob) { $("setupStatus").textContent = "Enter your date of birth."; return; }
     if (!(s.retireIncome > 0) || !(s.swr > 0)) { $("setupStatus").textContent = "Enter the monthly income you want in retirement and a withdrawal rate."; return; }
-    const V = vals(sh), tot = Object.values(V).reduce((a, b) => a + b, 0);
+    const V = vals(sh), tot = planUsd(V);
     if (tot > 0 && !MKT) { $("setupStatus").textContent = "Prices are still loading. Wait a moment, then press Start again."; return; }
     const next = norm({ ...s, ageDate: today(), startBalance: Math.round(tot * fxRate() * 100) / 100, setupDone: true });
     S = next; HOLD = { ...HOLD, ...sh };
     await db.doc("plan/settings").set(next); await saveShares();
     await autoCheckin(setupAgain ? "Plan restarted" : "Plan started");
     closeSetup(); renderAll();
-    $("hStatus").textContent = "You're set up. Each month, buy what it says and tap “I bought it”.";
   });
 
   function renderSignal() {
@@ -641,9 +643,8 @@ td.r, th.r { text-align: right; }
     if (!sg) { b.className = "sigbadge"; b.textContent = "no data"; $("sigText").textContent = MKT ? "The S&P 500 data didn't load in the last update." : "Couldn't load market data. Check your connection and reload."; $("sigMeta").textContent = ""; return; }
     b.className = "sigbadge " + (sg.on ? "on" : "off"); b.textContent = sg.on ? "Signal ON" : "Signal OFF";
     const pct = (sg.close / sg.sma200 - 1) * 100;
-    $("sigText").textContent = `S&P 500 ${sg.close.toLocaleString("en")} is ${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? "above" : "below"} its 200-day average (${sg.sma200.toLocaleString("en")}), and 20-day volatility is ${(sg.vol20 * 100).toFixed(1)}% (${sg.calm ? "under" : "over"} 25%). `
-      + (sg.pending ? `Today's reading says ${sg.raw ? "ON" : "OFF"}; it flips if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`)
-      + (sg.on ? " Small-value buys are allowed." : " After graduation, small-value money waits in IB01 until it turns back on.");
+    $("sigText").textContent = `S&P 500 ${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? "above" : "below"} its 200-day average · volatility ${(sg.vol20 * 100).toFixed(1)}% (limit 25%) · `
+      + (sg.pending ? `flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`);
     const age = (Date.now() - new Date(MKT.updated)) / 864e5;
     $("sigMeta").textContent = `Market close ${sg.date} · updated ${MKT.updated.slice(0, 16).replace("T", " ")} UTC${age > 4 ? " · data is " + Math.floor(age) + " days old" : ""}${MKT.errors && MKT.errors.length ? " · some prices missing" : ""}`;
   }
