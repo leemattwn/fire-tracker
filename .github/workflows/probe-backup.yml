@@ -1,7 +1,7 @@
 name: Check the backup data source (one-off)
 on:
   push:
-    paths: [".github/workflows/probe-backup.yml"]
+    paths: [".github/workflows/probe-backup.yml"]   # v2
 permissions:
   contents: write
 jobs:
@@ -16,10 +16,17 @@ jobs:
           python3 - <<'PY' > probe/backup.txt
           import importlib.util, json
           spec = importlib.util.spec_from_file_location("u", "scripts/update_data.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
-          _, y = u.yahoo("^GSPC", closed_only=True); s = u.stooq_spx()
-          sy, ss = u.signal(y), u.signal(s)
-          print("yahoo last", y[-1], "stooq last", s[-1])
-          for k in ("date", "close", "sma200", "vol20", "raw", "on", "since"): print(k, sy[k], ss[k])
+          import traceback, urllib.request
+          try:
+              _, y = u.yahoo("^GSPC", closed_only=True); sy = u.signal(y); print("yahoo ok", y[-1])
+          except Exception: print("yahoo error", traceback.format_exc()[-300:]); sy = None
+          try:
+              raw = urllib.request.urlopen(urllib.request.Request("https://stooq.com/q/d/l/?s=%5Espx&i=d", headers=u.UA), timeout=30).read().decode()
+              print("stooq raw head:", raw[:200].replace("\n", " | "), "len", len(raw))
+              s = u.stooq_spx(); ss = u.signal(s); print("stooq ok", s[-1])
+              if sy:
+                  for k in ("date", "close", "sma200", "vol20", "raw", "on", "since"): print(k, sy[k], ss[k])
+          except Exception: print("stooq error", traceback.format_exc()[-400:])
           PY
           git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add probe && git commit -m "backup check" && git pull --rebase && git push
