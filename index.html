@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light only"><meta name="theme-color" content="#f4f7f6">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light only"><meta name="theme-color" content="#0e7a6b"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>FIRE tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -251,7 +251,8 @@ td.r, th.r { text-align: right; }
     </form>
     <p class="status" id="pStatus" role="status"></p>
     <p class="small muted" id="spendNote"></p>
-    <div class="btnrow"><button type="button" class="ghost" id="redoSetup">Run setup again</button></div>
+    <div class="btnrow"><button type="button" class="ghost" id="redoSetup">Run setup again</button><button type="button" class="ghost" id="installBtn" hidden>Install as an app</button></div>
+    <p class="small muted" id="installNote"></p>
     <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
       <h3>Backup</h3>
       <p class="small muted">Everything is saved in this browser on this device only. Download a backup now and then; clearing browser data or switching phones erases it.</p>
@@ -907,6 +908,13 @@ td.r, th.r { text-align: right; }
       rd.readAsText(f);
     });
   }
+  // ---------- installable app (PWA): offline copy, install button, keep data from being cleared ----------
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  let installEvt = null;
+  window.addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); installEvt = ev; $("installBtn").hidden = false; });
+  $("installBtn").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; $("installBtn").hidden = true; if (r.outcome === "accepted") $("installNote").textContent = "Installed. Open it from your home screen."; });
+  const standalone = matchMedia("(display-mode: standalone)").matches;
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || (standalone ? navigator.storage.persist() : p)).then(p => { if (standalone) $("installNote").textContent = p ? "Running as an app. Your data is kept even when the phone is low on space; still download a backup now and then." : "Running as an app."; }).catch(() => {});
   restoreFrom($("bkFile"), "bkStatus"); restoreFrom($("sBkFile"), "setupStatus");
 })();
 </script>
