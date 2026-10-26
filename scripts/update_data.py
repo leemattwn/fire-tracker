@@ -60,6 +60,22 @@ def signal(rows):
                 pending=(raw != state), history=[[d, round(c, 2)] for d, c in rows[-260:]])
 
 
+def hk_cpi_probe():
+    """Temporary: look at the shape of the Census and Statistics Department CPI feed."""
+    out = {}
+    for name, url in {
+        "csd": "https://www.censtatd.gov.hk/api/get.php?id=510-60001&lang=en&full_series=1",
+        "fred": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=HKGCPIALLMINMEI",
+    }.items():
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+                raw = r.read().decode("utf-8", "replace")
+            out[name] = {"len": len(raw), "head": raw[:1500], "tail": raw[-800:]}
+        except Exception as e:
+            out[name] = {"error": str(e)}
+    json.dump(out, open(os.path.join(os.path.dirname(OUT), "cpi_probe.json"), "w"), indent=1)
+
+
 def main():
     try:
         old = json.load(open(OUT))
@@ -121,3 +137,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    hk_cpi_probe()
