@@ -1,0 +1,14 @@
+name: Test phone notification
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          if [ -z "$NTFY_TOPIC" ]; then echo "Add the NTFY_TOPIC secret first"; exit 1; fi
+          curl -fsS -H "Title: Test: notifications work" -H "Tags: white_check_mark" -H "Click: $SITE" \
+            -d "This is a test from your investment plan. Tap to open the tracker." "https://ntfy.sh/$NTFY_TOPIC"

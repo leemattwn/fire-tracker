@@ -50,6 +50,7 @@ jobs:
           DETAIL: ${{ steps.data.outputs.detail }}
           SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           OWNER: ${{ github.repository_owner }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           if [ "$FLIP" = "OFF" ]; then
             ACTION="Sell your small-value funds (AVUV, AVGS) and buy IB01, if they total over US\$1,500. The tracker's To do box shows the exact trades."
@@ -59,3 +60,7 @@ jobs:
           printf '@%s The market signal turned **%s** at the close on %s.\n\n%s\n\n**What to do:** %s\n\nOpen the tracker: %s\n' \
             "$OWNER" "$FLIP" "$WHEN" "$DETAIL" "$ACTION" "$SITE" > body.md
           gh issue create --title "Signal $FLIP on $WHEN" --body-file body.md
+          if [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: Signal $FLIP ($WHEN close)" -H "Priority: high" -H "Tags: chart_with_downwards_trend" \
+              -H "Click: $SITE" -d "$ACTION" "https://ntfy.sh/$NTFY_TOPIC" || echo "ntfy failed"
+          fi

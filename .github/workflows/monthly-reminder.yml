@@ -18,6 +18,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           OWNER: ${{ github.repository_owner }}
           SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           for n in $(gh issue list --state open --search "Monthly buy in:title" --json number --jq '.[].number'); do
             gh issue close "$n" --reason completed
@@ -25,3 +26,7 @@ jobs:
           MONTH=$(TZ=Asia/Hong_Kong date +'%B %Y')
           printf '@%s Tomorrow (the 15th) is your monthly buy.\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or moving to Irish funds).\n3. Buy the fund it shows, then tap **I bought it**.\n' "$OWNER" "$SITE" > body.md
           gh issue create --title "Monthly buy: $MONTH" --body-file body.md
+          if [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: Monthly buy tomorrow (15th)" -H "Tags: calendar" -H "Click: $SITE" \
+              -d "Open the tracker, do anything in To do first, then buy the fund it shows and tap I bought it." "https://ntfy.sh/$NTFY_TOPIC" || echo "ntfy failed"
+          fi
