@@ -60,21 +60,26 @@ def signal(rows):
                 pending=(raw != state), history=[[d, round(c, 2)] for d, c in rows[-260:]])
 
 
-def hk_cpi_probe():
-    """Temporary: summarise the Census and Statistics Department CPI feed."""
+def hk_cpi():
+    """Hong Kong Composite CPI, monthly, from the Census and Statistics Department (table 510-60001)."""
     url = "https://www.censtatd.gov.hk/api/get.php?id=510-60001&lang=en&full_series=1"
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=90) as r:
-        raw = json.load(r)
-    ds = raw.get("dataSet", [])
-    keys = sorted({k for d in ds for k in d})
-    combos = {}
+        ds = json.load(r)["dataSet"]
+    idx, yoy = {}, {}
     for d in ds:
-        k = "|".join(str(d.get(x, "")) for x in keys if x not in ("period", "figure", "sd_value"))
-        c = combos.setdefault(k, {"n": 0, "last": None})
-        c["n"] += 1
-        if d.get("freq") == "M": c["last"] = [d.get("period"), d.get("figure")]
-    out = {"top": list(raw.keys()), "header_keys": list(raw.get("header", {}).keys()), "record_keys": keys, "combos": combos}
-    json.dump(out, open(os.path.join(os.path.dirname(OUT), "cpi_probe.json"), "w"), indent=1)
+        if d.get("freq") != "M" or d.get("sv") != "CC_CM_1920" or d.get("figure") in (None, ""): continue
+        p = str(d["period"]); key = f"{p[:4]}-{p[4:6]}"
+        if d.get("svDesc") == "Index": idx[key] = float(d["figure"])
+        elif d.get("svDesc") == "Year-on-year % change": yoy[key] = float(d["figure"])
+    if not idx: raise RuntimeError("no Composite CPI rows")
+    months = sorted(idx); last = months[-1]
+    def ago(n):
+        y, m = int(last[:4]), int(last[5:]) - n
+        while m <= 0: y, m = y - 1, m + 12
+        return f"{y}-{m:02d}"
+    avg = lambda yrs: round(((idx[last] / idx[ago(12 * yrs)]) ** (1 / yrs) - 1) * 100, 2) if ago(12 * yrs) in idx else None
+    return {"latest": last, "yoy": yoy.get(last), "avg5": avg(5), "avg10": avg(10), "avg20": avg(20),
+            "index": {k: idx[k] for k in months if k >= "1995-01"}}
 
 
 def main():
@@ -128,9 +133,16 @@ def main():
             f.write(f"date={sg['date']}\n")
             f.write(f"detail=S&P 500 {sg['close']:,} vs 200-day average {sg['sma200']:,}; 20-day volatility {sg['vol20'] * 100:.1f}%\n")
 
+    try:
+        data["cpi"] = hk_cpi()
+    except Exception as e:
+        data["errors"].append(f"HK CPI: {e}")
+        if "cpi" in old: data["cpi"] = old["cpi"]
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(data, open(OUT, "w"), indent=1)
-    print(json.dumps({k: v for k, v in data.items() if k != "signal"}, indent=1))
+    print(json.dumps({k: v for k, v in data.items() if k not in ("signal", "cpi")}, indent=1))
+    if "cpi" in data: print({k: v for k, v in data["cpi"].items() if k != "index"})
     if "signal" in data: print({k: v for k, v in data["signal"].items() if k != "history"})
     if not data.get("signal") and not prices:
         sys.exit("No data fetched at all")
@@ -138,4 +150,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    hk_cpi_probe()
