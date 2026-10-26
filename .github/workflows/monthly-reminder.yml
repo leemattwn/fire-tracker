@@ -23,9 +23,5 @@ jobs:
             gh issue close "$n" --reason completed
           done
           MONTH=$(TZ=Asia/Hong_Kong date +'%B %Y')
-          EXTRA=""
-          if [ "$(TZ=Asia/Hong_Kong date +%m)" = "01" ]; then
-            EXTRA=$'\n\n**January:** if your US-listed funds (VOO + AVUV) are over US$3,000, the tracker will ask you to move them to VUAA and AVGS.'
-          fi
-          printf '@%s Tomorrow (the 15th) is your monthly buy.\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or the yearly move).\n3. Buy the fund it shows, then tap **I bought it**.%s\n' "$OWNER" "$SITE" "$EXTRA" > body.md
+          printf '@%s Tomorrow (the 15th) is your monthly buy.\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or moving to Irish funds).\n3. Buy the fund it shows, then tap **I bought it**.\n' "$OWNER" "$SITE" > body.md
           gh issue create --title "Monthly buy: $MONTH" --body-file body.md

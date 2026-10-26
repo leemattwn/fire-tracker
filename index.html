@@ -466,7 +466,7 @@ td.r, th.r { text-align: right; }
     const P = [
       { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
         `${hkFull(payNow(S.studentMonthly))} a month into the fund shown above, rising with inflation each year.`,
-        "Each January: once AVUV + VOO pass US$3,000, move them to AVGS and VUAA.",
+        "Once AVUV + VOO pass US$3,000, move them to AVGS and VUAA (the tracker asks).",
         "The signal filter starts once your small-value funds pass US$1,500.",
         "Protect your grades first."] },
       { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
@@ -611,7 +611,7 @@ td.r, th.r { text-align: right; }
 
   // ---------- to do: signal switches, the yearly move to Irish funds, rebalancing ----------
   const FILTER_MIN = 1500;   // US$ in small value before a student uses the filter
-  const US_MOVE = 3000;      // move US-listed funds to the Irish ones each January once above this
+  const US_MOVE = 3000;      // move US-listed funds to the Irish ones as soon as they pass this
   const BAND = 0.10;         // rebalance when small value is more than 10 points from 70%
   let ACT = null;
   function planAction(c) {
@@ -629,9 +629,9 @@ td.r, th.r { text-align: right; }
         text: `Sell your parked IB01 (${usd(V.IB01)}) and buy ${to} with the money.`,
         sells: allOf(["IB01"]), buys: [{ opts: [to, to === "AVUV" ? "AVGS" : "AVUV"], usd: V.IB01 }] };
     }
-    if (new Date().getMonth() === 0 && usNow > US_MOVE) {
+    if (usNow > US_MOVE) {
       const sells = allOf(["VOO", "AVUV"]);
-      return { kind: "move", head: "January: move US-listed funds to Irish ones", note: "Moved US-listed funds to Irish funds",
+      return { kind: "move", head: "Move US-listed funds to Irish ones", note: "Moved US-listed funds to Irish funds",
         text: `Your VOO and AVUV are ${usd(usNow)}. Sell ${sells.map(s => s.t).join(" and ")}, then buy ${sells.map(s => s.t === "VOO" ? "VUAA" : "AVGS").join(" and ")} with the money: lower dividend tax and no US estate tax.`,
         sells, buys: sells.map(s => ({ opts: [s.t === "VOO" ? "VUAA" : "AVGS"], usd: s.usd })) };
     }
@@ -667,10 +667,9 @@ td.r, th.r { text-align: right; }
     } else item("wait", "Split: no holdings yet.");
     if (!filterOn) item("wait", `Signal filter: starts once your small-value funds pass ${usd(FILTER_MIN)} (now ${usd(risk + V.IB01)}). Until then, ignore the signal.`);
     else item(sig === false ? "warn" : "ok", `Signal filter: on. The signal is ${sig === null ? "loading" : sig ? "ON, so hold small value" : "OFF, so small value waits in IB01"}.`);
-    if (student) item(usNow > US_MOVE ? (new Date().getMonth() === 0 ? "warn" : "wait") : "ok",
-      usNow > US_MOVE ? `US-listed funds: ${usd(usNow)}, over ${usd(US_MOVE)}. Move them to VUAA and AVGS in January; until then, new money goes to the Irish funds.`
-                      : `US-listed funds: ${usd(usNow)}. Each January, once they pass ${usd(US_MOVE)}, you'll be asked to move them to VUAA and AVGS.`);
-    else if (usNow > 1) item(new Date().getMonth() === 0 && usNow > US_MOVE ? "warn" : "wait", `US-listed funds: ${usd(usNow)}. Each January they're moved to the Irish funds once over ${usd(US_MOVE)}; keep them under US$60,000 (US estate tax).`);
+    if (usNow > US_MOVE) item("warn", `US-listed funds: ${usd(usNow)}, over ${usd(US_MOVE)}. Move them to VUAA and AVGS (see above).`);
+    else if (student) item("ok", `US-listed funds: ${usd(usNow)}. Once they pass ${usd(US_MOVE)}, you'll be asked to move them to VUAA and AVGS.`);
+    else if (usNow > 1) item("ok", `US-listed funds: ${usd(usNow)}. They're moved to the Irish funds once over ${usd(US_MOVE)}.`);
     item("ok", "GitHub emails you when the signal flips, and a reminder before each month's buy on the 15th.");
   }
   function taRow(kind, i, t, opts, shares) {
