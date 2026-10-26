@@ -237,8 +237,8 @@ td.r, th.r { text-align: right; }
       <label for="pLiving">Living costs a month now (HK$)<input id="pLiving" type="number" min="0" step="any"><span class="hint">Sizes your emergency fund. It doesn't change FI age.</span></label>
       <label for="pIncome">Monthly income wanted in retirement (today's HK$)<input id="pIncome" type="number" min="1" step="any"></label>
       <label for="pSwr">Withdrawal rate, % a year<input id="pSwr" type="number" min="0.5" max="10" step="any"></label>
-      <label for="pReturn">Assumed return, % a year after inflation<input id="pReturn" type="number" min="0" max="20" step="any" required></label>
-      <label for="pInfl">Inflation, % a year<input id="pInfl" type="number" min="-5" max="20" step="any" required></label>
+      <label for="pReturn">Assumed return, % a year after inflation<input id="pReturn" type="number" min="0" max="20" step="any" required><span class="hint" id="retHint"></span></label>
+      <label for="pInfl">Future inflation, % a year<input id="pInfl" type="number" min="-5" max="20" step="any" required><span class="hint" id="inflHint"></span></label>
       <label for="pStart">Balance when the plan started (HK$)<input id="pStart" type="number" min="0" step="any"></label>
       <label for="pSv">Small-value share target (%)<input id="pSv" type="number" min="0" max="100" step="any" required><span class="hint">Decides which fund "This month's buy" picks. It doesn't change FI age.</span></label>
     </form>
@@ -293,7 +293,17 @@ td.r, th.r { text-align: right; }
   const contribAt = a => (a < S.gradAge ? S.studentMonthly : S.monthly);          // in today's money (the plan maths is all real)
   // What to actually pay in this year: today's-money amount raised by inflation once a year from the plan start, rounded to HK$100.
   const yearsIn = () => Math.max(0, Math.floor((new Date(today()) - new Date(S.ageDate)) / YR));
-  const payNow = real => Math.round(real * Math.pow(1 + S.inflation / 100, yearsIn()) / 100) * 100;
+  // Price level at date b relative to date a: actual Hong Kong CPI where published, your inflation setting beyond that.
+  const grow = (a, b) => Math.pow(1 + S.inflation / 100, (new Date(b) - new Date(a)) / YR);
+  function inflFactor(a, b) {
+    const C = MKT && MKT.cpi && MKT.cpi.index, L = MKT && MKT.cpi && MKT.cpi.latest;
+    if (!C || !L) return grow(a, b);
+    const lvl = d => { const k = d.slice(0, 7); if (C[k]) return C[k]; if (k > L) return C[L] * grow(L + "-15", d); return null; };
+    const x = lvl(a), y = lvl(b);
+    return x && y ? y / x : grow(a, b);
+  }
+  const addYears = (d, n) => { const x = new Date(d); x.setFullYear(x.getFullYear() + n); return x.toISOString().slice(0, 10); };
+  const payNow = real => Math.round(real * inflFactor(S.ageDate, addYears(S.ageDate, yearsIn())) / 100) * 100;
   function path(startAge, startBal, rPct, untilAge) {
     const rm = Math.pow(1 + rPct / 100, 1 / 12) - 1; const pts = [[startAge, startBal]];
     let a = startAge, b = startBal;
@@ -307,7 +317,7 @@ td.r, th.r { text-align: right; }
     while (a < 90) { b = b * (1 + rm) + contribAt(a); a += 1 / 12; if (b >= S.target) return a; }
     return Infinity;
   }
-  const realOf = c => c.balance / Math.pow(1 + S.inflation / 100, Math.max(0, (new Date(c.date) - new Date(S.ageDate)) / YR));
+  const realOf = c => c.balance / Math.max(1, inflFactor(S.ageDate, c.date));
 
   // ---------- acuity readout (progress to target, Snellen scale) ----------
   const ACUITY = [[0.1, "6/60"], [0.17, "6/36"], [0.25, "6/24"], [0.33, "6/18"], [0.5, "6/12"], [0.67, "6/9"], [0.8, "6/7.5"], [1, "6/6"]];
@@ -443,13 +453,13 @@ td.r, th.r { text-align: right; }
     const yrs = S.living * 12;
     const P = [
       { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
-        `${hkFull(payNow(S.studentMonthly))} a month into the fund shown above, up ${S.inflation}% each year.`,
+        `${hkFull(payNow(S.studentMonthly))} a month into the fund shown above, rising with inflation each year.`,
         "Each January: once AVUV + VOO pass US$3,000, move them to AVGS and VUAA.",
         "The signal filter starts once your small-value funds pass US$1,500.",
         "Protect your grades first."] },
       { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
         `Emergency fund first: ${hk(yrs / 2)} in IB01 (the tracker shows it).`,
-        `Then ${hkFull(S.monthly)} a month in today's money, up ${S.inflation}% each year.`,
+        `Then ${hkFull(S.monthly)} a month in today's money, rising with inflation each year.`,
         "Raise the amount with every pay rise."] },
       { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
         "Build 2–3 years of spending in IB01 as a cash buffer.", "Re-check your retirement income."] },
@@ -465,7 +475,16 @@ td.r, th.r { text-align: right; }
       const ul = document.createElement("ul"); p.items.forEach(t => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); }); d.appendChild(ul);
       box.appendChild(d);
     });
-    $("spendNote").textContent = `To draw ${hkFull(S.retireIncome)} a month in today's money at a ${S.swr}% withdrawal rate, you need ${hk(S.target)}.` + (S.living > 0 ? ` That's ${(S.retireIncome / S.living).toFixed(1)}× your living costs now.` : "");
+    const nomNow = inflFactor(S.ageDate, today());                                 // prices since the plan started
+    const fiDate = isFinite(fa) ? addYears(S.dob, Math.floor(fa)) : null, nomFI = isFinite(fa) ? nomNow * Math.pow(1 + S.inflation / 100, fa - nowAge) : NaN;
+    $("spendNote").textContent = `To draw ${hkFull(S.retireIncome)} a month in today's money at a ${S.swr}% withdrawal rate, you need ${hk(S.target)}.`
+      + (S.living > 0 ? ` That's ${(S.retireIncome / S.living).toFixed(1)}× your living costs now.` : "")
+      + (fiDate ? ` In ${fiDate.slice(0, 4)} money (age ${fa.toFixed(1)}), with ${S.inflation}% inflation, that's about ${hkFull(S.retireIncome * nomFI)} a month and a ${hk(S.target * nomFI)} target. Same plan, just counted in future dollars.` : "");
+    const nomR = ((1 + S.realReturn / 100) * (1 + S.inflation / 100) - 1) * 100;
+    $("retHint").textContent = `About ${nomR.toFixed(1)}% a year before inflation, the number you'd see in IBKR.`;
+    const cp = MKT && MKT.cpi;
+    $("inflHint").textContent = cp ? `Live Hong Kong CPI: ${cp.yoy}% over the last 12 months (to ${cp.latest}); ${cp.avg5}% a year over 5 years, ${cp.avg10}% over 10, ${cp.avg20}% over 20. Past months use the real CPI; this setting is only for the future.`
+                                   : "Live CPI hasn't loaded; using this setting for past months too.";
   }
 
   // ---------- forms ----------
@@ -539,7 +558,7 @@ td.r, th.r { text-align: right; }
            : student ? " US funds have passed US$3,000, so buy the Irish fund." : "");
     $("buyFund").textContent = code === "EF" ? "IB01" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
     const realAmt = contribAt(ageAt(today())), pay = payNow(realAmt);
-    $("buySub").textContent = `Invest ${hkFull(pay)} this month` + (pay !== realAmt ? ` (${hkFull(realAmt)} raised ${S.inflation}% a year for inflation since ${S.ageDate.slice(0, 4)}).` : `. It goes up ${S.inflation}% each year to keep pace with inflation.`);
+    $("buySub").textContent = `Invest ${hkFull(pay)} this month` + (pay !== realAmt ? ` (${hkFull(realAmt)} raised with Hong Kong inflation since ${S.ageDate.slice(0, 4)}).` : ". It rises with Hong Kong inflation once a year.");
     renderAct(V, sig, filterOn, risk, useUS);
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
     const box = $("sides"); box.textContent = "";
@@ -722,7 +741,7 @@ td.r, th.r { text-align: right; }
       if (!r.ok) throw new Error(r.status);
       MKT = await r.json();
     } catch (e) { MKT = null; }
-    renderSignal(); renderBuy();
+    renderSignal(); renderAll();
     if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
