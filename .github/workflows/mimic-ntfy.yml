@@ -1,0 +1,27 @@
+name: Sample real alerts (one-off)
+on:
+  push:
+    paths: [".github/workflows/mimic-ntfy.yml"]
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+    steps:
+      - name: Same as a real Signal OFF alert
+        run: |
+          ACTION="Sell your small-value funds (AVUV, AVGS) and buy IB01, if they total over US\$1,500. The tracker's To do box shows the exact trades."
+          curl -fsS -H "Title: [TEST] Signal OFF (2026-10-23 close)" -H "Priority: high" -H "Tags: chart_with_downwards_trend" \
+            -H "Click: $SITE" -d "$ACTION" "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
+          sleep 20
+      - name: Same as a real Signal ON alert
+        run: |
+          ACTION="Sell your parked IB01 and buy back small value (the tracker shows which fund)."
+          curl -fsS -H "Title: [TEST] Signal ON (2026-10-23 close)" -H "Priority: high" -H "Tags: chart_with_downwards_trend" \
+            -H "Click: $SITE" -d "$ACTION" "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
+          sleep 20
+      - name: Same as the real monthly reminder
+        run: |
+          curl -fsS -H "Title: [TEST] Monthly buy tomorrow (15th)" -H "Tags: calendar" -H "Click: $SITE" \
+            -d "Open the tracker, do anything in To do first, then buy the fund it shows and tap I bought it." "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
