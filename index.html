@@ -38,7 +38,8 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .snellen span { color: var(--line); line-height: 1; }
 .snellen span.on { color: var(--accent); }
 .chartbox { position: relative; min-height: 340px; }
-.chartbox svg { display: block; }
+.chartbox svg { display: block; touch-action: pan-y; }
+.chartbox, .chartbox * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
 .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 6px; }
 .legend i.dash { border-top-style: dashed; border-color: var(--muted); }
@@ -401,21 +402,30 @@ td.r, th.r { text-align: right; }
     // check-ins
     if (realPts.length > 1) el("path", { d: realPts.map((p, i) => (i ? "L" : "M") + x(p[0]) + "," + y(p[1])).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
     realPts.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
-    // hover
+    // scrub: a dot follows your finger (or mouse) along the likely line, with the target at that age
     let tip = box.querySelector(".tip"); if (!tip) { tip = document.createElement("div"); tip.className = "tip"; box.appendChild(tip); }
-    const rule = el("line", { y1: m.t, y2: H - m.b, stroke: C("--muted"), "stroke-width": 1, visibility: "hidden" }, svg);
-    svg.addEventListener("pointermove", ev => {
-      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
-      let a = start + (px - m.l) / (W - m.l - m.r) * (end - start); a = Math.max(start, Math.min(end, a));
-      rule.setAttribute("x1", x(a)); rule.setAttribute("x2", x(a)); rule.setAttribute("visibility", "visible");
+    const main = lines.find(L => L.r === S.realReturn);
+    const dTgt = el("circle", { r: 4, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2, visibility: "hidden" }, svg);
+    const dMain = el("circle", { r: 6, fill: C("--accent"), stroke: C("--panel"), "stroke-width": 2, visibility: "hidden" }, svg);
+    const show = ev => {
+      const r = svg.getBoundingClientRect(), pxl = (ev.clientX - r.left) * W / r.width;
+      const a = Math.max(start, Math.min(end, start + (pxl - m.l) / (W - m.l - m.r) * (end - start)));
+      const i = Math.min(main.pts.length - 1, Math.round((a - start) * 12)), v = main.pts[i][1], tv = tgtAt(a);
+      dMain.setAttribute("cx", x(a)); dMain.setAttribute("cy", y(Math.min(v, yMax))); dTgt.setAttribute("cx", x(a)); dTgt.setAttribute("cy", y(tv));
+      dMain.setAttribute("visibility", v <= yMax ? "visible" : "hidden"); dTgt.setAttribute("visibility", "visible");
       tip.textContent = "";
-      const head = document.createElement("div"); head.className = "muted"; head.textContent = "Age " + a.toFixed(1); tip.appendChild(head);
-      lines.forEach(L => { const i = Math.min(L.pts.length - 1, Math.round((a - start) * 12)); const row = document.createElement("div"); row.textContent = `${L.r}% after inflation: `; const b = document.createElement("b"); b.textContent = hk(L.pts[i][1]); row.appendChild(b); tip.appendChild(row); });
-      { const row = document.createElement("div"); row.textContent = "Target: "; const b = document.createElement("b"); b.textContent = hk(tgtAt(a)); row.appendChild(b); tip.appendChild(row); }
+      const add = (lab, val, cls) => { const row = document.createElement("div"); if (cls) row.className = cls; row.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; row.appendChild(b); } tip.appendChild(row); };
+      add(`Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}`, null, "muted");
+      add("Likely: ", hk(v)); add("Target: ", hk(tv));
+      lines.filter(L => L !== main).forEach(L => add(`${L.r}%: `, hk(L.pts[Math.min(L.pts.length - 1, i)][1]), "muted"));
       tip.style.display = "block";
-      const bx = x(a) * r.width / W; tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, bx + 12 + tip.offsetWidth > box.clientWidth ? bx - tip.offsetWidth - 12 : bx + 12)) + "px"; tip.style.top = "8px";
-    });
-    svg.addEventListener("pointerleave", () => { tip.style.display = "none"; rule.setAttribute("visibility", "hidden"); });
+      const bx = x(a) * r.width / W; tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, bx + 14 + tip.offsetWidth > box.clientWidth ? bx - tip.offsetWidth - 14 : bx + 14)) + "px"; tip.style.top = "8px";
+    };
+    const hide = () => { tip.style.display = "none"; dMain.setAttribute("visibility", "hidden"); dTgt.setAttribute("visibility", "hidden"); };
+    svg.addEventListener("pointerdown", ev => { show(ev); });
+    svg.addEventListener("pointermove", ev => { if (ev.pointerType === "mouse" || ev.buttons || ev.pressure > 0) show(ev); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(t => svg.addEventListener(t, ev => { if (ev.pointerType !== "mouse" || t === "pointerleave") hide(); }));
+    svg.addEventListener("contextmenu", ev => ev.preventDefault());
     box.insertBefore(svg, box.firstChild);
   }
 
