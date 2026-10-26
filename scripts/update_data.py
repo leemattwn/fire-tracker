@@ -40,6 +40,28 @@ def yahoo(sym, rng="2y", closed_only=False):
     raise RuntimeError(f"{sym}: {last}")
 
 
+def stooq_spx():
+    """Backup source for S&P 500 daily closes if Yahoo is down. Drops today's bar while New York is still trading."""
+    url = "https://stooq.com/q/d/l/?s=%5Espx&i=d"
+    last = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+                lines = r.read().decode().strip().splitlines()
+            rows = []
+            for ln in lines[1:]:
+                p = ln.split(",")
+                if len(p) >= 5 and p[4] not in ("", "null"): rows.append((p[0], float(p[4])))
+            now = datetime.now(timezone.utc)
+            if rows and rows[-1][0] == now.strftime("%Y-%m-%d") and now.weekday() < 5 and 13 <= now.hour < 21:
+                rows = rows[:-1]                       # unfinished session
+            if len(rows) > 260: return rows[-520:]
+            raise RuntimeError(f"only {len(rows)} rows")
+        except Exception as e:
+            last = e; time.sleep(3 + 3 * attempt)
+    raise RuntimeError(f"stooq: {last}")
+
+
 def signal(rows):
     closes = [c for _, c in rows]
     out = []
@@ -105,11 +127,18 @@ def main():
         return rate
 
     try:
-        meta, rows = yahoo("^GSPC", closed_only=True)       # the signal uses finished closes only
+        try:
+            if os.environ.get("FORCE_BACKUP"): raise RuntimeError("forced")
+            meta, rows = yahoo("^GSPC", closed_only=True)   # the signal uses finished closes only
+            data["signal_source"] = "yahoo"
+        except Exception as e:
+            data["errors"].append(f"S&P 500 (Yahoo): {e}; using the backup source")
+            rows = stooq_spx(); data["signal_source"] = "stooq"
         data["signal"] = signal(rows)
     except Exception as e:
         data["errors"].append(f"S&P 500: {e}")
         if "signal" in old: data["signal"] = old["signal"]
+        data["signal_stale"] = True
 
     prices = {}
     for name, sym in FUNDS.items():
@@ -132,14 +161,20 @@ def main():
         data["errors"].append(f"USD/HKD: {e}")
         data["usdhkd"] = old.get("usdhkd", 7.8)
 
-    # tell the workflow when the filter flips, so it can notify you
+    # A flip creates an alert that stays in the file until it has been delivered, so a failed send is retried next run.
     was, now = old.get("signal", {}).get("on"), data.get("signal", {}).get("on")
-    if os.environ.get("GITHUB_OUTPUT") and isinstance(was, bool) and isinstance(now, bool) and was != now:
+    alert = old.get("alert")
+    if isinstance(was, bool) and isinstance(now, bool) and was != now:
         sg = data["signal"]
+        alert = {"flip": "ON" if now else "OFF", "date": sg["date"], "sent": False,
+                 "detail": f"S&P 500 {sg['close']:,} vs 200-day average {sg['sma200']:,}; 20-day volatility {sg['vol20'] * 100:.1f}%"}
+    if alert: data["alert"] = alert
+    stale_days = (datetime.now(timezone.utc) - datetime.fromisoformat(data["signal"]["date"]).replace(tzinfo=timezone.utc)).days if data.get("signal") else 99
+    if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"flip={'ON' if now else 'OFF'}\n")
-            f.write(f"date={sg['date']}\n")
-            f.write(f"detail=S&P 500 {sg['close']:,} vs 200-day average {sg['sma200']:,}; 20-day volatility {sg['vol20'] * 100:.1f}%\n")
+            if alert and not alert.get("sent"):
+                f.write(f"flip={alert['flip']}\ndate={alert['date']}\ndetail={alert['detail']}\n")
+            f.write(f"stale_days={stale_days}\n")
 
     try:
         data["cpi"] = hk_cpi()

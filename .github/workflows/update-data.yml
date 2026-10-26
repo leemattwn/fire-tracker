@@ -32,19 +32,11 @@ jobs:
       - name: Fetch prices and compute the signal
         id: data
         run: python scripts/update_data.py
-      - name: Commit data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add data
-          git diff --cached --quiet && exit 0
-          git commit -m "Update market data"
-          git pull --rebase
-          git push
-      - name: Notify when the signal flips
+      - name: Send the signal alert (phone + email); retried every run until it gets through
         if: steps.data.outputs.flip != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           FLIP: ${{ steps.data.outputs.flip }}
           WHEN: ${{ steps.data.outputs.date }}
           DETAIL: ${{ steps.data.outputs.detail }}
@@ -54,13 +46,41 @@ jobs:
         run: |
           if [ "$FLIP" = "OFF" ]; then
             ACTION="Sell your small-value funds (AVUV, AVGS) and buy IB01, if they total over US\$1,500. The tracker's To do box shows the exact trades."
+            TAGS=chart_with_downwards_trend
           else
             ACTION="Sell your parked IB01 and buy back small value (the tracker shows which fund)."
+            TAGS=chart_with_upwards_trend
           fi
           printf '@%s The market signal turned **%s** at the close on %s.\n\n%s\n\n**What to do:** %s\n\nOpen the tracker: %s\n' \
             "$OWNER" "$FLIP" "$WHEN" "$DETAIL" "$ACTION" "$SITE" > body.md
-          gh issue create --title "Signal $FLIP on $WHEN" --body-file body.md
-          if [ -n "$NTFY_TOPIC" ]; then
-            curl -fsS -H "Title: Signal $FLIP ($WHEN close)" -H "Priority: high" -H "Tags: $([ "$FLIP" = "OFF" ] && echo chart_with_downwards_trend || echo chart_with_upwards_trend)" \
-              -H "Click: $SITE" -d "$ACTION" "https://ntfy.sh/$NTFY_TOPIC" || echo "ntfy failed"
-          fi
+          bash scripts/notify.sh "Signal $FLIP ($WHEN close)" "$ACTION" high "$TAGS" "Signal $FLIP on $WHEN" body.md
+          python3 -c "import json; p='data/market.json'; d=json.load(open(p)); d['alert']['sent']=True; json.dump(d, open(p,'w'), indent=1)"
+      - name: Warn if market data has stopped updating
+        if: fromJSON(steps.data.outputs.stale_days || '0') >= 5 && (github.event.schedule == '35 21 * * 1-5' || github.event_name == 'workflow_dispatch')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DAYS: ${{ steps.data.outputs.stale_days }}
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          printf 'The S&P 500 data used for the signal is %s days old, so a signal change could be missed. Check the Actions tab; until it recovers, check the S&P 500 against its 200-day average yourself.\n' "$DAYS" > body.md
+          bash scripts/notify.sh "Tracker: market data is $DAYS days old" "The signal can't update until this is fixed. Check the Actions tab on GitHub." high warning "Market data is $DAYS days old" body.md
+      - name: Commit data
+        if: always() && steps.data.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet && exit 0
+          git commit -m "Update market data"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 10; done
+          exit 1
+      - name: Tell you if this job breaks
+        if: failure() && (github.event.schedule == '35 21 * * 1-5' || github.event_name == 'workflow_dispatch')
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$NTFY_TOPIC" ] && curl -fsS --retry 6 --retry-delay 10 --retry-all-errors -H "Title: Tracker data job failed" -H "Priority: high" -H "Tags: warning" \
+            -H "Click: $RUN" -d "Today's market update failed. Tap to see why. GitHub also emails you about failed runs." "https://ntfy.sh/$NTFY_TOPIC" || true

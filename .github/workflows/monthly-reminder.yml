@@ -2,7 +2,11 @@ name: Monthly buy reminder
 
 on:
   schedule:
-    - cron: "7 1 14 * *"   # 09:07 Hong Kong on the 14th, the day before the monthly buy
+    # Several tries: GitHub can delay or drop a scheduled run when it's busy. Only the first that succeeds sends anything.
+    - cron: "7 1 14 * *"    # 09:07 Hong Kong on the 14th
+    - cron: "37 4 14 * *"   # 12:37 Hong Kong on the 14th (backup)
+    - cron: "7 11 14 * *"   # 19:07 Hong Kong on the 14th (backup)
+    - cron: "7 23 14 * *"   # 07:07 Hong Kong on the 15th (last chance)
   workflow_dispatch:
 
 permissions:
@@ -12,7 +16,8 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
-      - name: Open this month's reminder (and close last month's)
+      - uses: actions/checkout@v4
+      - name: Send this month's reminder once (phone + email)
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -20,13 +25,13 @@ jobs:
           SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          for n in $(gh issue list --state open --search "Monthly buy in:title" --json number --jq '.[].number'); do
-            gh issue close "$n" --reason completed
-          done
           MONTH=$(TZ=Asia/Hong_Kong date +'%B %Y')
-          printf '@%s Tomorrow (the 15th) is your monthly buy.\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or moving to Irish funds).\n3. Buy the fund it shows, then tap **I bought it**.\n' "$OWNER" "$SITE" > body.md
-          gh issue create --title "Monthly buy: $MONTH" --body-file body.md
-          if [ -n "$NTFY_TOPIC" ]; then
-            curl -fsS -H "Title: Monthly buy tomorrow (15th)" -H "Tags: calendar" -H "Click: $SITE" \
-              -d "Open the tracker, do anything in To do first, then buy the fund it shows and tap I bought it." "https://ntfy.sh/$NTFY_TOPIC" || echo "ntfy failed"
+          if [ -n "$(gh issue list --state all --search "\"Monthly buy: $MONTH\" in:title" --json number --jq '.[].number')" ]; then
+            echo "Already sent for $MONTH"; exit 0
           fi
+          for n in $(gh issue list --state open --search "Monthly buy in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --reason completed || true
+          done
+          WHEN=$([ "$(TZ=Asia/Hong_Kong date +%d)" = "15" ] && echo "today" || echo "tomorrow")
+          printf '@%s Your monthly buy is %s (the 15th).\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or moving to Irish funds).\n3. Buy the fund it shows, then tap **I bought it**.\n' "$OWNER" "$WHEN" "$SITE" > body.md
+          bash scripts/notify.sh "Monthly buy $WHEN (15th)" "Open the tracker, do anything in To do first, then buy the fund it shows and tap I bought it." default calendar "Monthly buy: $MONTH" body.md
