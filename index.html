@@ -117,7 +117,7 @@ td.r, th.r { text-align: right; }
 <main class="wrap">
   <header>
     <span class="eyebrow">Retirement plan · saved on this device</span>
-    <h1 id="title">Your plan</h1>
+    <h1 id="title">Your retirement plan</h1>
   </header>
 
   <section class="panel" id="setup" aria-labelledby="setupTitle">
@@ -335,7 +335,7 @@ td.r, th.r { text-align: right; }
 
   // ---------- summary ----------
   function renderSummary() {
-    $("title").textContent = `${hk(S.target).replace(".0M", "M")} plan`;
+    $("title").textContent = S.setupDone ? `${hk(S.target).replace(".0M", "M")} plan` : "Your retirement plan";   // no made-up number before setup
     const latest = checkins.length ? checkins[checkins.length - 1] : null;
     const fiPlan = fiAge(S.age, S.startBalance, S.realReturn);
     if (!latest) {
