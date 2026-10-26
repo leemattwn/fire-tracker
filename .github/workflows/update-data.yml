@@ -2,6 +2,7 @@ name: Update market data
 
 on:
   schedule:
+    - cron: "17 7-20 * * 1-5" # hourly while London or New York is open (15:17-04:17 Hong Kong)
     - cron: "35 21 * * 1-5"   # 05:35 Hong Kong, after the US close
     - cron: "50 16 * * 1-5"   # 00:50 Hong Kong, after the London close
   workflow_dispatch:

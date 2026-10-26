@@ -784,7 +784,9 @@ td.r, th.r { text-align: right; }
     $("sigText").textContent = `S&P 500 ${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? "above" : "below"} its 200-day average · volatility ${(sg.vol20 * 100).toFixed(1)}% (limit 25%) · `
       + (sg.pending ? `flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`);
     const age = (Date.now() - new Date(MKT.updated)) / 864e5;
-    $("sigMeta").textContent = `Market close ${sg.date} · updated ${MKT.updated.slice(0, 16).replace("T", " ")} UTC${age > 4 ? " · data is " + Math.floor(age) + " days old" : ""}${MKT.errors && MKT.errors.length ? " · some prices missing" : ""}`;
+    const hkt = iso => new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Hong_Kong", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const pt = Object.values(MKT.prices || {}).map(p => p.time).filter(Boolean).sort().pop();
+    $("sigMeta").textContent = `Signal from the ${sg.date} close · fund prices ${pt ? "as of " + hkt(pt) : "updated " + hkt(MKT.updated)} Hong Kong time (refreshed hourly while markets are open, about 15 minutes delayed)${age > 4 ? " · data is " + Math.floor(age) + " days old" : ""}${MKT.errors && MKT.errors.length ? " · some prices missing" : ""}`;
   }
   async function loadMarket() {
     try {

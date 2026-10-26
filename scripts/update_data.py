@@ -15,7 +15,7 @@ FUNDS = {  # tracker name -> Yahoo symbol
 UA = {"User-Agent": "Mozilla/5.0 (fire-tracker data job)"}
 
 
-def yahoo(sym, rng="2y"):
+def yahoo(sym, rng="2y", closed_only=False):
     last = None
     for host in ("query1", "query2"):
         url = f"https://{host}.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?range={rng}&interval=1d"
@@ -25,9 +25,15 @@ def yahoo(sym, rng="2y"):
                     res = json.load(r)["chart"]["result"][0]
                 ts = res.get("timestamp") or []
                 cl = res["indicators"]["quote"][0].get("close") or []
-                rows = [(datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d"), c) for t, c in zip(ts, cl) if c is not None]
+                meta = res["meta"]
+                # During trading, Yahoo's last daily bar is today's unfinished session. Keep it for live
+                # prices, but flag it so the signal only ever uses finished closes.
+                reg = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
+                live_from = reg.get("start") if reg.get("start") and time.time() < reg.get("end", 0) else None
+                rows = [(datetime.fromtimestamp(t, timezone.utc).strftime("%Y-%m-%d"), c) for t, c in zip(ts, cl)
+                        if c is not None and not (live_from and t >= live_from and closed_only)]
                 if rows:
-                    return res["meta"], rows
+                    return meta, rows
             except Exception as e:  # network hiccup or rate limit: back off and retry
                 last = e
                 time.sleep(2 + 3 * attempt)
@@ -99,7 +105,7 @@ def main():
         return rate
 
     try:
-        meta, rows = yahoo("^GSPC")
+        meta, rows = yahoo("^GSPC", closed_only=True)       # the signal uses finished closes only
         data["signal"] = signal(rows)
     except Exception as e:
         data["errors"].append(f"S&P 500: {e}")
@@ -110,16 +116,18 @@ def main():
         try:
             meta, rows = yahoo(sym, "5d")
             cur = meta.get("currency", "USD")
-            px = rows[-1][1]
-            prices[name] = dict(symbol=sym, currency=cur, price=round(px, 4), usd=round(px * to_usd(cur), 4), date=rows[-1][0])
+            px = meta.get("regularMarketPrice") or rows[-1][1]                # latest trade (about 15 min delayed)
+            when = meta.get("regularMarketTime")
+            prices[name] = dict(symbol=sym, currency=cur, price=round(px, 4), usd=round(px * to_usd(cur), 4), date=rows[-1][0],
+                                time=datetime.fromtimestamp(when, timezone.utc).isoformat(timespec="minutes") if when else None)
         except Exception as e:
             data["errors"].append(f"{name}: {e}")
             if name in old.get("prices", {}): prices[name] = {**old["prices"][name], "stale": True}
     data["prices"] = prices
 
     try:
-        _, r = yahoo("HKD=X", "5d")
-        data["usdhkd"] = round(r[-1][1], 4)
+        m, r = yahoo("HKD=X", "5d")
+        data["usdhkd"] = round(m.get("regularMarketPrice") or r[-1][1], 4)
     except Exception as e:
         data["errors"].append(f"USD/HKD: {e}")
         data["usdhkd"] = old.get("usdhkd", 7.8)
