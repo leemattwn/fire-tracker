@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light only"><meta name="theme-color" content="#f4f7f6">
 <title>FIRE tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,13 +12,8 @@
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0d1412; --panel: #131d1a; --fg: #e4ede9; --muted: #92a39c; --line: #26352f; --soft: #1a2622;
-  --accent: #41c3ae; --accent-soft: #163a33; --ahead: #4ade80; --behind: #f2894b; --grid: #1f2c28; color-scheme: dark } }
-:root[data-theme="dark"] {
-  --bg: #0d1412; --panel: #131d1a; --fg: #e4ede9; --muted: #92a39c; --line: #26352f; --soft: #1a2622;
-  --accent: #41c3ae; --accent-soft: #163a33; --ahead: #4ade80; --behind: #f2894b; --grid: #1f2c28; color-scheme: dark }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
 .wrap { max-width: 1080px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: flex; flex-direction: column; gap: 22px; }
 h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
