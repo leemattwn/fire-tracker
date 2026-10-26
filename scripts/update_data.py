@@ -40,26 +40,25 @@ def yahoo(sym, rng="2y", closed_only=False):
     raise RuntimeError(f"{sym}: {last}")
 
 
-def stooq_spx():
-    """Backup source for S&P 500 daily closes if Yahoo is down. Drops today's bar while New York is still trading."""
-    url = "https://stooq.com/q/d/l/?s=%5Espx&i=d"
+def backup_spx():
+    """Backup source for S&P 500 daily closes (CNBC) if Yahoo is down. Drops today's bar while New York is still trading."""
+    now = datetime.now(timezone.utc)
+    start = (now.replace(year=now.year - 3)).strftime("%Y%m%d000000"); end = now.strftime("%Y%m%d235959")
+    url = f"https://ts-api.cnbc.com/harmony/app/bars/.SPX/1D/{start}/{end}/adjusted/EST5EDT.json"
+    hdr = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124 Safari/537.36", "Accept": "application/json"}
     last = None
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
-                lines = r.read().decode().strip().splitlines()
-            rows = []
-            for ln in lines[1:]:
-                p = ln.split(",")
-                if len(p) >= 5 and p[4] not in ("", "null"): rows.append((p[0], float(p[4])))
-            now = datetime.now(timezone.utc)
+            with urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=30) as r:
+                bars = json.load(r)["barData"]["priceBars"]
+            rows = [(f"{b['tradeTime'][:4]}-{b['tradeTime'][4:6]}-{b['tradeTime'][6:8]}", float(b["close"])) for b in bars if b.get("close")]
             if rows and rows[-1][0] == now.strftime("%Y-%m-%d") and now.weekday() < 5 and 13 <= now.hour < 21:
                 rows = rows[:-1]                       # unfinished session
-            if len(rows) > 260: return rows[-520:]
+            if len(rows) > 260: return rows
             raise RuntimeError(f"only {len(rows)} rows")
         except Exception as e:
             last = e; time.sleep(3 + 3 * attempt)
-    raise RuntimeError(f"stooq: {last}")
+    raise RuntimeError(f"backup source: {last}")
 
 
 def signal(rows):
@@ -133,7 +132,7 @@ def main():
             data["signal_source"] = "yahoo"
         except Exception as e:
             data["errors"].append(f"S&P 500 (Yahoo): {e}; using the backup source")
-            rows = stooq_spx(); data["signal_source"] = "stooq"
+            rows = backup_spx(); data["signal_source"] = "cnbc"
         data["signal"] = signal(rows)
     except Exception as e:
         data["errors"].append(f"S&P 500: {e}")
