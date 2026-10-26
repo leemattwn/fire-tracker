@@ -1,0 +1,4 @@
+1 message(s) on the server for your topic in the last 2 hours
+2026-10-26T17:16:29 | Test: notifications work | This is a test from your investment plan. Tap to open the tracker.
+topic length: 29; starts with: fire-leemattwn-; has spaces: no
+sent test 2
