@@ -1,7 +1,7 @@
 name: Check the backup data source (one-off)
 on:
   push:
-    paths: [".github/workflows/probe-backup.yml"]   # v2
+    paths: [".github/workflows/probe-backup.yml"]   # v3
 permissions:
   contents: write
 jobs:
@@ -9,24 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
       - run: |
           mkdir -p probe
           python3 - <<'PY' > probe/backup.txt
-          import importlib.util, json
-          spec = importlib.util.spec_from_file_location("u", "scripts/update_data.py"); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
-          import traceback, urllib.request
-          try:
-              _, y = u.yahoo("^GSPC", closed_only=True); sy = u.signal(y); print("yahoo ok", y[-1])
-          except Exception: print("yahoo error", traceback.format_exc()[-300:]); sy = None
-          try:
-              raw = urllib.request.urlopen(urllib.request.Request("https://stooq.com/q/d/l/?s=%5Espx&i=d", headers=u.UA), timeout=30).read().decode()
-              print("stooq raw head:", raw[:200].replace("\n", " | "), "len", len(raw))
-              s = u.stooq_spx(); ss = u.signal(s); print("stooq ok", s[-1])
-              if sy:
-                  for k in ("date", "close", "sma200", "vol20", "raw", "on", "since"): print(k, sy[k], ss[k])
-          except Exception: print("stooq error", traceback.format_exc()[-400:])
+          import urllib.request, json, time, traceback, datetime
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36", "Accept": "application/json, text/plain, */*"}
+          def get(url, t=60):
+              t0 = time.time(); raw = urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=t).read().decode(); return raw, round(time.time() - t0, 1)
+          for name, url in [("fred", "https://fred.stlouisfed.org/graph/fredgraph.csv?id=SP500"),
+                            ("nasdaq", "https://api.nasdaq.com/api/quote/SPX/historical?assetclass=index&fromdate=2025-01-01&limit=9999"),
+                            ("cnbc", "https://ts-api.cnbc.com/harmony/app/bars/.SPX/1D/20250101000000/20261027000000/adjusted/EST5EDT.json")]:
+              try:
+                  raw, s = get(url); print(name, "ok", s, "s, len", len(raw), "| head:", raw[:160].replace("\n", " | "), "| tail:", raw[-160:].replace("\n", " | "))
+              except Exception as e: print(name, "error", repr(e)[:200])
           PY
           git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add probe && git commit -m "backup check" && git pull --rebase && git push
