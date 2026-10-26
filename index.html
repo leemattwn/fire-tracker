@@ -44,6 +44,7 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .legend i.dash { border-top-style: dashed; border-color: var(--muted); }
 .legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--fg); }
 .legend i.dots { border-top: 2px dotted var(--fg); }
+.legend i.fi { width: 10px; height: 10px; border: 2.5px solid var(--behind); border-radius: 50%; box-sizing: border-box; }
 .legend i.tgt { border-color: var(--behind); border-top-style: dotted; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); display: none; white-space: nowrap; z-index: 2; }
 .tip b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -62,9 +63,14 @@ body:not(.in-setup) #setup { display: none; }
 .in-setup main > section:not(#setup) { display: none; }
 #setup { border-color: var(--accent); }
 details > summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 600; }
-.actbox { border: 2px solid var(--behind); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--behind) 7%, var(--panel)); }
-.actbox.in { border-color: var(--accent); background: var(--accent-soft); }
-.actbox #actHead { color: var(--behind); } .actbox.in #actHead { color: var(--accent); }
+.todo { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.todo .act { border: 2px solid var(--behind); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: color-mix(in srgb, var(--behind) 7%, var(--panel)); }
+.todo .act.good { border-color: var(--accent); background: var(--accent-soft); }
+.todo .act .ah { font-weight: 700; color: var(--behind); } .todo .act.good .ah { color: var(--accent); }
+.todo ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.todo li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; }
+.todo li .ok { color: var(--accent); font-weight: 700; } .todo li .wait { color: var(--muted); font-weight: 700; } .todo li .warn { color: var(--behind); font-weight: 700; }
+.rowpair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; grid-column: 1 / -1; }
 .boughtform { border: 1px solid var(--accent); border-radius: 10px; padding: 14px; }
 select { font: inherit; font-family: var(--mono); font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; width: 100%; }
 .hint { font-size: 12px; line-height: 1.4; color: var(--muted); opacity: .85; }
@@ -155,7 +161,7 @@ td.r, th.r { text-align: right; }
     <div class="sighead"><h2 id="sigTitle">Market signal</h2><span class="sigbadge" id="sigBadge">loading…</span></div>
     <p class="small" id="sigText">Loading today's market data…</p>
     <p class="small muted" id="sigMeta"></p>
-    <p class="small muted">ON = S&amp;P 500 above its 200-day average and volatility under 25%, two closes in a row. When it turns OFF, the tracker tells you to move your small-value funds into IB01, and back when it's ON again. GitHub emails you when it flips. While studying, the filter starts once your small-value funds pass US$1,500; below that, the fees cost more than it saves.</p>
+    <p class="small muted">ON = S&amp;P 500 above its 200-day average and volatility under 25%, two closes in a row. When it turns OFF, the tracker tells you to move your small-value funds into IB01, and back when it's ON again. GitHub emails you when it flips.</p>
   </section>
 
   <section class="panel" aria-labelledby="buyTitle">
@@ -163,16 +169,19 @@ td.r, th.r { text-align: right; }
       <h2 id="buyTitle">This month</h2>
       <p class="small muted">Pay HKD into IBKR (it converts to US$ for you), buy this fund on the 15th, then tap “I bought it”.</p><p class="small muted" id="buySub"></p>
     </div>
-    <div class="actbox" id="actBox" hidden>
-      <span class="eyebrow" id="actHead">Do this now</span>
-      <p id="actText"></p>
-      <div class="btnrow"><button type="button" id="actBtn">I've switched</button></div>
-      <form id="actForm" autocomplete="off" hidden>
-        <label for="afFund">Fund bought<select id="afFund"></select></label>
-        <label for="afShares">Shares bought<input id="afShares" type="number" min="0" step="any" inputmode="decimal"></label>
-        <p class="full hint" id="afHint"></p>
-        <div class="btnrow"><button type="submit">Update my holdings</button><button type="button" class="ghost" id="afCancel">Cancel</button></div>
-      </form>
+    <div class="todo" id="todo" aria-live="polite">
+      <span class="eyebrow">To do</span>
+      <div class="act" id="taBox" hidden>
+        <span class="ah" id="taHead"></span>
+        <p class="small" id="taText"></p>
+        <div class="btnrow"><button type="button" id="taBtn">Done: update my holdings</button></div>
+        <form id="taForm" autocomplete="off" hidden>
+          <div class="full" id="taRows" style="display:flex;flex-direction:column;gap:10px"></div>
+          <p class="full hint">Type the exact shares from your IBKR trade confirmations.</p>
+          <div class="btnrow"><button type="submit">Save</button><button type="button" class="ghost" id="taCancel">Cancel</button></div>
+        </form>
+      </div>
+      <ul id="todoList"></ul>
     </div>
     <div class="buyrow">
       <div class="buycall"><span class="eyebrow">This month, buy</span><span class="v" id="buyFund">AVUV</span><span class="s" id="buyWhy">Loading…</span>
@@ -209,9 +218,9 @@ td.r, th.r { text-align: right; }
 
   <section class="panel" aria-labelledby="chartTitle">
     <div style="display:flex;flex-direction:column;gap:6px">
-      <h2 id="chartTitle">Path to the target</h2>
+      <h2 id="chartTitle">Your balance and where it's heading</h2>
     </div>
-    <div class="legend"><span><i></i>Plan at 6% after inflation (likely)</span><span><i class="dash"></i>4% and 8%</span><span><i class="tgt"></i>Target, rising with prices</span><span><i class="dot"></i>Your balance</span><span><i class="dots"></i>From your balance now (6%)</span></div>
+    <div class="legend"><span><i></i>Likely from your balance now (6%)</span><span><i class="dash"></i>Bad (4%) and good (8%)</span><span><i class="dot"></i>Your balance</span><span><i class="fi"></i>Reaching your target (FI)</span></div>
     <div class="readout" id="chartRead" aria-live="polite"></div>
     <div class="chartbox" id="chart"></div>
     <p class="small muted" id="chartNote"></p>
@@ -355,78 +364,64 @@ td.r, th.r { text-align: right; }
   function renderChart() {
     const box = $("chart"); box.querySelectorAll("svg").forEach(s => s.remove());
     const W = Math.max(300, box.clientWidth), H = 340, m = { l: 64, r: 16, t: 14, b: 34 };
-    const start = S.age;
-    const fiHi = Math.min(70, fiAge(S.age, S.startBalance, 4));
-    const end = Math.max(42, Math.ceil((isFinite(fiHi) ? fiHi : 60) + 1), ...checkins.map(c => Math.ceil(ageAt(c.date) + 1)));
-    const lines = [4, S.realReturn, 8].map(r => ({ r, pts: path(S.age, S.startBalance, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
-    const realPts = checkins.map(c => [ageAt(c.date), c.balance, c]);
-    const lastCi = checkins.length ? checkins[checkins.length - 1] : null, aL = lastCi ? ageAt(lastCi.date) : null;
-    const fromNow = lastCi ? path(aL, realOf(lastCi), RET, end).map(([a, v]) => [a, v * nomAt(a)]) : null;   // likely path from where you actually are
-    const tgtPts = []; for (let a = start; a <= end + 1e-9; a += 1 / 12) tgtPts.push([a, S.target * nomAt(a)]);
-    const tgtAt = a => tgtPts[Math.max(0, Math.min(tgtPts.length - 1, Math.round((a - start) * 12)))][1];
-    const yMax = Math.max(tgtAt(end) * 1.15, ...realPts.map(p => p[1] * 1.1));
+    const last = checkins.length ? checkins[checkins.length - 1] : null;
+    const a0 = last ? ageAt(last.date) : S.age, b0 = last ? realOf(last) : S.startBalance;
+    const start = Math.min(S.age, a0), fa = fiAge(a0, b0, RET), fa4 = fiAge(a0, b0, 4);
+    const end = Math.max(a0 + 5, Math.ceil(Math.min(70, isFinite(fa4) ? fa4 : isFinite(fa) ? fa + 8 : 65)) + 1);
+    const fan = [4, RET, 8].map(r => ({ r, pts: path(a0, b0, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
+    const main = fan[1], hist = checkins.map(c => [ageAt(c.date), c.balance]);
+    const yMax = Math.max(main.pts[main.pts.length - 1][1] * 1.05, ...hist.map(p => p[1] * 1.1), 1);
     const x = a => m.l + (a - start) / (end - start) * (W - m.l - m.r);
     const y = v => H - m.b - v / yMax * (H - m.t - m.b);
-    const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Projected balance by age" }, null);
+    const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Your balance and where it's heading" }, null);
     const css = getComputedStyle(document.documentElement), C = n => css.getPropertyValue(n).trim();
     const cp = el("clipPath", { id: "plotClip" }, el("defs", {}, svg)); el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b }, cp);
-    // grid + y ticks
-    const step = yMax > 40e6 ? 10e6 : yMax > 20e6 ? 5e6 : yMax > 8e6 ? 2e6 : yMax > 3e6 ? 1e6 : 5e5;
+    const raw = yMax / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 5, 10].map(k => k * mag).find(s => s >= raw);
     for (let v = 0; v <= yMax; v += step) {
       el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: C("--grid"), "stroke-width": 1 }, svg);
       const t = el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = hk(v).replace("HK$", "");
     }
-    // x ticks
     const xs = (end - start) > 20 ? 5 : 2;
-    for (let a = Math.ceil(start / xs) * xs; a <= end; a += xs) {
-      const t = el("text", { x: x(a), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = a;
-    }
+    for (let a = Math.ceil(start / xs) * xs; a <= end; a += xs) { const t = el("text", { x: x(a), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = a; }
     const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age";
-    // age 40 + graduation markers
-    [[40, "40"], [S.gradAge, "graduate"]].forEach(([a, lab]) => { if (a > start && a < end) {
+    [[a0, "now"], [S.gradAge, "work"]].forEach(([a, lab]) => { if (a > start + 0.3 && a < end) {
       el("line", { x1: x(a), x2: x(a), y1: m.t, y2: H - m.b, stroke: C("--line"), "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
       const t = el("text", { x: x(a) + 4, y: m.t + 10, "font-size": 11, fill: C("--muted") }, svg); t.textContent = lab; } });
-    // target
-    el("path", { d: tgtPts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--behind"), "stroke-width": 1.5, "stroke-dasharray": "2 4" }, svg);
-    const tl = el("text", { x: m.l + 6, y: y(tgtAt(start)) + 16, "font-size": 11, fill: C("--behind"), "font-family": "IBM Plex Mono, monospace" }, svg); tl.textContent = "target";
-    // paths
-    lines.forEach(L => {
-      const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("");
-      const main = L.r === S.realReturn;
-      el("path", { d, fill: "none", stroke: main ? C("--accent") : C("--muted"), "stroke-width": main ? 2.5 : 1.5, "stroke-dasharray": main ? "" : "5 4", "stroke-linejoin": "round", "stroke-linecap": "round", "clip-path": "url(#plotClip)" }, svg);
-      const vis = L.pts.filter(p => p[1] <= yMax), last = vis.length ? vis[vis.length - 1] : L.pts[0];
-      if (!main) { const t = el("text", { x: Math.min(x(last[0]) - 4, W - m.r - 4), y: Math.max(m.t + 10, y(last[1]) - 6), "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); t.textContent = L.r + "%"; }
+    fan.forEach(L => {
+      const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), isMain = L === main;
+      el("path", { d, fill: "none", stroke: isMain ? C("--accent") : C("--muted"), "stroke-width": isMain ? 2.5 : 1.5, "stroke-dasharray": isMain ? "" : "5 4", "stroke-linejoin": "round", "clip-path": "url(#plotClip)" }, svg);
     });
-    // check-ins
-    if (realPts.length > 1) el("path", { d: realPts.map((p, i) => (i ? "L" : "M") + x(p[0]) + "," + y(p[1])).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
-    if (fromNow) el("path", { d: fromNow.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.75, "stroke-dasharray": "1 4", "stroke-linecap": "round", "clip-path": "url(#plotClip)" }, svg);
-    realPts.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
-    // scrub: a dot follows your finger (or mouse) along the likely line, with the target at that age
+    if (hist.length > 1) el("path", { d: hist.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
+    hist.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 3.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
+    if (isFinite(fa) && fa <= end) {                                   // where the likely line reaches your target
+      const fv = S.target * nomAt(fa);
+      el("circle", { cx: x(fa), cy: y(fv), r: 6, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2.5 }, svg);
+      const t = el("text", { x: x(fa) - 8, y: y(fv) - 10, "text-anchor": "end", "font-size": 11, fill: C("--behind"), "font-weight": 600 }, svg); t.textContent = `FI at ${fa.toFixed(1)}`;
+    }
+    // drag a finger (or mouse) to read values
     const rd = $("chartRead");
-    const main = lines.find(L => L.r === S.realReturn);
-    const dTgt = el("circle", { r: 4, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2, visibility: "hidden" }, svg);
     const dMain = el("circle", { r: 6, fill: C("--accent"), stroke: C("--panel"), "stroke-width": 2, visibility: "hidden" }, svg);
+    const at = (L, a) => L.pts[Math.max(0, Math.min(L.pts.length - 1, Math.round((a - a0) * 12)))][1];
+    const balAt = a => { let b = null; for (const p of hist) if (p[0] <= a + 1e-6) b = p; return b; };
+    function fill(a, live) {
+      rd.textContent = "";
+      const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
+      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : "Drag along the chart to see any age", null, "h");
+      const past = a < a0 - 1e-6, b = balAt(a);
+      add("Your balance: ", past || !live ? (b ? hk(b[1]) : "—") : "—");
+      add(`Likely (${RET}%): `, past ? "—" : hk(at(main, a)));
+      add("Bad (4%): ", past ? "—" : hk(at(fan[0], a)), "muted"); add("Good (8%): ", past ? "—" : hk(at(fan[2], a)), "muted");
+    }
     const show = ev => {
       const r = svg.getBoundingClientRect(), pxl = (ev.clientX - r.left) * W / r.width;
       const a = Math.max(start, Math.min(end, start + (pxl - m.l) / (W - m.l - m.r) * (end - start)));
-      const i = Math.min(main.pts.length - 1, Math.round((a - start) * 12)), v = main.pts[i][1], tv = tgtAt(a);
-      dMain.setAttribute("cx", x(a)); dMain.setAttribute("cy", y(Math.min(v, yMax))); dTgt.setAttribute("cx", x(a)); dTgt.setAttribute("cy", y(tv));
-      dMain.setAttribute("visibility", v <= yMax ? "visible" : "hidden"); dTgt.setAttribute("visibility", "visible");
-      fill(a, i, v, tv);
+      const b = balAt(a), v = a < a0 ? (b ? b[1] : null) : at(main, a), ax = a < a0 ? (b ? b[0] : a) : a;
+      if (v != null) { dMain.setAttribute("cx", x(ax)); dMain.setAttribute("cy", y(Math.min(v, yMax))); dMain.setAttribute("visibility", "visible"); } else dMain.setAttribute("visibility", "hidden");
+      fill(a, true);
     };
-    function fill(a, i, v, tv) {             // values sit above the chart, so nothing covers the lines
-      rd.textContent = "";
-      const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
-      add(i == null ? "Drag along the chart to see any age" : `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}`, null, "h");
-      add("Plan: ", hk(v)); add("From now: ", fromNow && a >= aL ? hk(fromNow[Math.min(fromNow.length - 1, Math.round((a - aL) * 12))][1]) : "—");
-      add("Target: ", hk(tv));
-      const o = lines.filter(L => L !== main); add(`${o[0].r}%: `, hk(o[0].pts[Math.min(o[0].pts.length - 1, i ?? 0)][1]), "muted"); add(`${o[1].r}%: `, hk(o[1].pts[Math.min(o[1].pts.length - 1, i ?? 0)][1]), "muted");
-    }
-    const nowA = Math.max(start, Math.min(end, ageAt(today()))), nowI = Math.round((nowA - start) * 12);
-    const reset = () => { const i = Math.min(main.pts.length - 1, nowI); fill(nowA, null, main.pts[i][1], tgtAt(nowA)); };
-    const hide = () => { reset(); dMain.setAttribute("visibility", "hidden"); dTgt.setAttribute("visibility", "hidden"); };
-    reset();
-    svg.addEventListener("pointerdown", ev => { show(ev); });
+    const hide = () => { fill(a0, false); dMain.setAttribute("visibility", "hidden"); };
+    hide();
+    svg.addEventListener("pointerdown", show);
     svg.addEventListener("pointermove", ev => { if (ev.pointerType === "mouse" || ev.buttons || ev.pressure > 0) show(ev); });
     ["pointerup", "pointercancel", "pointerleave"].forEach(t => svg.addEventListener(t, ev => { if (ev.pointerType !== "mouse" || t === "pointerleave") hide(); }));
     svg.addEventListener("contextmenu", ev => ev.preventDefault());
@@ -497,8 +492,7 @@ td.r, th.r { text-align: right; }
       + (isFinite(fiNom) ? ` With prices rising, that's about ${hk(fiNom)} (${hkFull(S.retireIncome * nomAt(fa))} a month) by ${dateAtAge(fa).slice(0, 4)}, when you're projected to get there.` : "")
       + (S.living > 0 ? ` That's ${(S.retireIncome / S.living).toFixed(1)}× your living costs now.` : "");
     const cp = MKT && MKT.cpi, nomR = ((1 + RET / 100) * (1 + futInfl() / 100) - 1) * 100;
-    $("chartNote").textContent = (cp ? `Prices so far follow Hong Kong's official CPI (${cp.yoy}% over the 12 months to ${cp.latest}), so the target falls if there's deflation. ` : "")
-      + `Ahead, it assumes ${futInfl()}% inflation a year${cp ? " (the 20-year average)" : ""} and a likely ${RET}% return after inflation, about ${nomR.toFixed(1)}% before. 4% and 8% show a bad and a good outcome.`;
+    $("chartNote").textContent = `The lines start from your latest balance and add your monthly saving. Amounts are in actual dollars: ${cp ? `prices so far follow Hong Kong's official CPI (${cp.yoy}% over the 12 months to ${cp.latest}), and ` : ""}ahead it assumes ${futInfl()}% inflation a year with a likely ${RET}% return after inflation (about ${nomR.toFixed(1)}% before). The red ring is where you reach your target.`;
   }
 
   // ---------- forms ----------
@@ -573,7 +567,7 @@ td.r, th.r { text-align: right; }
     $("buyFund").textContent = code === "EF" ? "IB01" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
     const realAmt = contribAt(ageAt(today())), pay = payNow(realAmt);
     $("buySub").textContent = `Invest ${hkFull(pay)} this month` + (pay !== realAmt ? ` (${hkFull(realAmt)} raised with Hong Kong inflation since ${S.ageDate.slice(0, 4)}).` : ". It rises with Hong Kong inflation once a year.");
-    renderAct(V, sig, filterOn, risk, useUS);
+    renderTodo({ V, sig, filterOn, risk, useUS, student, sp, sv, tot, usNow });
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
     const box = $("sides"); box.textContent = "";
     const tg = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70));
@@ -588,8 +582,6 @@ td.r, th.r { text-align: right; }
     note.className = "small " + (us > 50000 ? "warn" : "muted");
     const miss = missingPx();
     note.textContent = (miss.length ? `No price today for ${miss.join(", ")}. ` : "")
-      + (us > 3000 ? `US-listed funds (VOO + AVUV) are ${usd(us)}: at your January check-in, move AVUV to AVGS and VOO to VUAA.` : "")
-      + (us > 50000 ? " Keep US-listed holdings under about US$60,000 (US estate tax)." : "")
       + (V.EF > 0 ? ` Emergency fund: ${hk(V.EF * fxRate())}, not counted in the plan.` : "");
   }
   let holdTimer = null;
@@ -617,50 +609,96 @@ td.r, th.r { text-align: right; }
     } finally { ciBusy = false; }
   }
 
-  // ---------- signal switches: small value -> IB01 when OFF, back when ON ----------
+  // ---------- to do: signal switches, the yearly move to Irish funds, rebalancing ----------
   const FILTER_MIN = 1500;   // US$ in small value before a student uses the filter
+  const US_MOVE = 3000;      // move US-listed funds to the Irish ones each January once above this
+  const BAND = 0.10;         // rebalance when small value is more than 10 points from 70%
   let ACT = null;
-  function renderAct(V, sig, filterOn, risk, useUS) {
-    const box = $("actBox");
-    ACT = sig === false && filterOn && risk > 1 ? { kind: "out" }
-        : sig === true && V.IB01 > 1 ? { kind: "in", to: useUS ? "AVUV" : "AVGS" } : null;
-    if (!ACT) { box.hidden = true; $("actForm").hidden = true; return; }
-    box.hidden = false; box.className = "actbox" + (ACT.kind === "in" ? " in" : "");
-    if (ACT.kind === "out") {
-      const sells = ["AVUV", "AVGS"].filter(t => V[t] > 1), fees = sells.reduce((a, t) => a + FEE(t), 0) + FEE("IB01") + risk * 0.001;
-      ACT.usd = risk - fees;
-      $("actHead").textContent = "Signal is OFF · do this now";
-      $("actText").textContent = `Sell all your ${sells.join(" and ")} (${usd(risk)}) and buy IB01 with the money. About ${usd2(fees)} in fees. It stays in IB01 until the signal turns back ON.`;
-    } else {
-      const fees = FEE("IB01") + FEE(ACT.to) + V.IB01 * 0.001;
-      ACT.usd = V.IB01 - fees;
-      $("actHead").textContent = "Signal is back ON · do this now";
-      $("actText").textContent = `Sell your parked IB01 (${usd(V.IB01)}) and buy ${ACT.to} with the money. About ${usd2(fees)} in fees.`;
+  function planAction(c) {
+    const { V, sig, filterOn, risk, useUS, sp, sv, tot, usNow } = c, sh = t => +HOLD[t] || 0;
+    const allOf = ts => ts.filter(t => V[t] > 1).map(t => ({ t, sh: sh(t), usd: V[t] }));
+    if (sig === false && filterOn && risk > 1) {
+      const sells = allOf(["AVUV", "AVGS"]);
+      return { kind: "out", warn: true, head: "Signal is OFF: move small value to IB01", note: "Moved small value into IB01",
+        text: `Sell all your ${sells.map(s => s.t).join(" and ")} (${usd(risk)}) and buy IB01 with the money. It stays there until the signal turns back ON.`,
+        sells, buys: [{ opts: ["IB01"], usd: risk }] };
     }
+    if (sig === true && V.IB01 > 1) {
+      const to = useUS ? "AVUV" : "AVGS";
+      return { kind: "in", head: "Signal is back ON: move IB01 back", note: "Moved IB01 back into small value",
+        text: `Sell your parked IB01 (${usd(V.IB01)}) and buy ${to} with the money.`,
+        sells: allOf(["IB01"]), buys: [{ opts: [to, to === "AVUV" ? "AVGS" : "AVUV"], usd: V.IB01 }] };
+    }
+    if (new Date().getMonth() === 0 && usNow > US_MOVE) {
+      const sells = allOf(["VOO", "AVUV"]);
+      return { kind: "move", head: "January: move US-listed funds to Irish ones", note: "Moved US-listed funds to Irish funds",
+        text: `Your VOO and AVUV are ${usd(usNow)}. Sell ${sells.map(s => s.t).join(" and ")}, then buy ${sells.map(s => s.t === "VOO" ? "VUAA" : "AVGS").join(" and ")} with the money: lower dividend tax and no US estate tax.`,
+        sells, buys: sells.map(s => ({ opts: [s.t === "VOO" ? "VUAA" : "AVGS"], usd: s.usd })) };
+    }
+    const canRebal = tot > 0 && !(filterOn && sig === false);
+    if (canRebal && Math.abs(sv / tot - SV / 100) > BAND) {
+      const over = sv / tot > SV / 100, move = Math.abs(sv - SV / 100 * tot);
+      const order = over ? ["AVUV", "AVGS"] : (useUS ? ["VOO", "VUAA"] : ["VUAA", "VOO"]);
+      let left = move; const sells = [];
+      for (const t of order) { if (left <= 1 || V[t] <= 1) continue; const take = Math.min(left, V[t]); sells.push({ t, sh: take >= V[t] - 0.5 ? sh(t) : take / px(t), usd: take }); left -= take; }
+      const to = over ? (useUS ? "VOO" : "VUAA") : (useUS ? "AVUV" : "AVGS");
+      const alt = over ? (to === "VOO" ? "VUAA" : "VOO") : (to === "AVUV" ? "AVGS" : "AVUV");
+      return { kind: "rebal", head: `Rebalance: small value is ${(sv / tot * 100).toFixed(0)}%`, note: "Rebalanced",
+        text: `It's outside 60–80%, so move about ${usd(move)} back to 70/30: sell ${sells.map(s => `${usd(s.usd)} of ${s.t}`).join(" and ")}, then buy ${to}.`,
+        sells, buys: [{ opts: [to, alt], usd: move }] };
+    }
+    return null;
   }
-  function afEstimate() {
-    const t = $("afFund").value, p = px(t), est = isFinite(p) && ACT ? Math.max(0, ACT.usd / p) : NaN;
-    $("afHint").textContent = isFinite(est) ? `About ${est.toFixed(4)} shares at ${usd2(p)}. Type the exact number from IBKR.` : "Type the shares from IBKR.";
-    $("afShares").value = isFinite(est) ? est.toFixed(4) : "";
+  function renderTodo(c) {
+    const { V, sig, filterOn, risk, student, sv, tot, usNow } = c;
+    ACT = planAction(c);
+    const box = $("taBox");
+    if (!ACT) { box.hidden = true; $("taForm").hidden = true; }
+    else {
+      const fees = ACT.sells.reduce((a, s) => a + FEE(s.t) + s.usd * 0.0005, 0) + ACT.buys.reduce((a, b) => a + FEE(b.opts[0]) + b.usd * 0.0005, 0);
+      box.hidden = false; box.className = "act" + (ACT.warn ? "" : " good");
+      $("taHead").textContent = ACT.head; $("taText").textContent = ACT.text + ` About ${usd2(fees)} in fees.`;
+    }
+    const L = $("todoList"); L.textContent = "";
+    const item = (state, text) => { const li = document.createElement("li"); const s = document.createElement("span"); s.className = state; s.textContent = state === "ok" ? "✓" : state === "warn" ? "!" : "·"; const t = document.createElement("span"); t.textContent = text; li.append(s, t); L.appendChild(li); };
+    if (tot > 0) {
+      const w = sv / tot * 100, off = Math.abs(w / 100 - SV / 100) > BAND;
+      item(off && !(filterOn && sig === false) ? "warn" : "ok", `Split: small value ${w.toFixed(0)}% (target 70%; rebalance below 60% or above 80%).`);
+    } else item("wait", "Split: no holdings yet.");
+    if (!filterOn) item("wait", `Signal filter: starts once your small-value funds pass ${usd(FILTER_MIN)} (now ${usd(risk + V.IB01)}). Until then, ignore the signal.`);
+    else item(sig === false ? "warn" : "ok", `Signal filter: on. The signal is ${sig === null ? "loading" : sig ? "ON, so hold small value" : "OFF, so small value waits in IB01"}.`);
+    if (student) item(usNow > US_MOVE ? (new Date().getMonth() === 0 ? "warn" : "wait") : "ok",
+      usNow > US_MOVE ? `US-listed funds: ${usd(usNow)}, over ${usd(US_MOVE)}. Move them to VUAA and AVGS in January; until then, new money goes to the Irish funds.`
+                      : `US-listed funds: ${usd(usNow)}. Each January, once they pass ${usd(US_MOVE)}, you'll be asked to move them to VUAA and AVGS.`);
+    else if (usNow > 1) item(new Date().getMonth() === 0 && usNow > US_MOVE ? "warn" : "wait", `US-listed funds: ${usd(usNow)}. Each January they're moved to the Irish funds once over ${usd(US_MOVE)}; keep them under US$60,000 (US estate tax).`);
+    item("ok", "GitHub emails you when the signal flips, and a reminder before each month's buy on the 15th.");
   }
-  $("actBtn").addEventListener("click", () => {
+  function taRow(kind, i, t, opts, shares) {
+    const wrap = document.createElement("div"); wrap.className = "rowpair";
+    const l1 = document.createElement("label"); l1.textContent = kind === "s" ? "Sold" : "Bought";
+    const sel = document.createElement("select"); sel.id = `ta${kind}F${i}`; opts.forEach(o => { const op = document.createElement("option"); op.value = o; op.textContent = o; sel.appendChild(op); }); sel.value = t;
+    if (kind === "s") sel.disabled = true; l1.appendChild(sel);
+    const l2 = document.createElement("label"); l2.textContent = "Shares";
+    const inp = document.createElement("input"); inp.type = "number"; inp.min = "0"; inp.step = "any"; inp.inputMode = "decimal"; inp.id = `ta${kind}N${i}`; inp.value = isFinite(shares) ? (+shares).toFixed(4) : ""; l2.appendChild(inp);
+    wrap.append(l1, l2); return wrap;
+  }
+  const estBuy = (b, t) => { const p = px(t); return isFinite(p) ? Math.max(0, (b.usd * 0.999 - FEE(t)) / p) : NaN; };
+  $("taBtn").addEventListener("click", () => {
     if (!ACT) return;
-    const opts = ACT.kind === "out" ? ["IB01"] : [ACT.to, ...["AVUV", "AVGS"].filter(t => t !== ACT.to)];
-    $("afFund").textContent = ""; opts.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; $("afFund").appendChild(o); });
-    afEstimate(); $("actForm").hidden = false; $("afShares").focus();
+    const rows = $("taRows"); rows.textContent = "";
+    ACT.sells.forEach((s, i) => rows.appendChild(taRow("s", i, s.t, [s.t], s.sh)));
+    ACT.buys.forEach((b, i) => { const r = taRow("b", i, b.opts[0], b.opts, estBuy(b, b.opts[0])); rows.appendChild(r);
+      r.querySelector("select").addEventListener("change", ev => { const e = estBuy(b, ev.target.value); $(`tabN${i}`).value = isFinite(e) ? e.toFixed(4) : ""; }); });
+    $("taForm").hidden = false;
   });
-  $("afFund").addEventListener("change", afEstimate);
-  $("afCancel").addEventListener("click", () => { $("actForm").hidden = true; });
-  $("actForm").addEventListener("submit", async ev => {
-    ev.preventDefault();
-    const t = $("afFund").value, n = Number($("afShares").value);
-    if (!(n > 0) || !ACT) { $("hStatus").textContent = "Enter how many shares you bought."; return; }
-    const next = { ...HOLD };
-    if (ACT.kind === "out") { next.AVUV = 0; next.AVGS = 0; next.IB01 = Math.round(((+next.IB01 || 0) + n) * 1e6) / 1e6; }
-    else { next.IB01 = 0; next[t] = Math.round(((+next[t] || 0) + n) * 1e6) / 1e6; }
-    const msg = ACT.kind === "out" ? `Moved small value into ${n} IB01` : `Moved IB01 back into ${n} ${t}`;
-    HOLD = next; $("actForm").hidden = true; fillHoldForm(); renderBuy();
-    try { await saveShares(); await autoCheckin(msg); $("hStatus").textContent = msg + ". Holdings updated."; }
+  $("taCancel").addEventListener("click", () => { $("taForm").hidden = true; });
+  $("taForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); if (!ACT) return;
+    const next = { ...HOLD }, r6 = v => Math.round(v * 1e6) / 1e6;
+    for (let i = 0; i < ACT.sells.length; i++) { const t = ACT.sells[i].t, n = Number($(`tasN${i}`).value); if (!(n >= 0)) { $("hStatus").textContent = "Check the shares you sold."; return; } next[t] = r6(Math.max(0, (+next[t] || 0) - n)); if (next[t] < 1e-4) next[t] = 0; }
+    for (let i = 0; i < ACT.buys.length; i++) { const t = $(`tabF${i}`).value, n = Number($(`tabN${i}`).value); if (!(n > 0)) { $("hStatus").textContent = "Enter the shares you bought."; return; } next[t] = r6((+next[t] || 0) + n); }
+    const note = ACT.note; HOLD = next; $("taForm").hidden = true; fillHoldForm(); renderBuy();
+    try { await saveShares(); await autoCheckin(note); $("hStatus").textContent = note + ". Holdings updated."; }
     catch (e) { $("hStatus").textContent = "Couldn't save. Try again in a moment."; }
   });
 

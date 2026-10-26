@@ -1,0 +1,31 @@
+name: Monthly buy reminder
+
+on:
+  schedule:
+    - cron: "7 1 14 * *"   # 09:07 Hong Kong on the 14th, the day before the monthly buy
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open this month's reminder (and close last month's)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          for n in $(gh issue list --state open --search "Monthly buy in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --reason completed
+          done
+          MONTH=$(TZ=Asia/Hong_Kong date +'%B %Y')
+          EXTRA=""
+          if [ "$(TZ=Asia/Hong_Kong date +%m)" = "01" ]; then
+            EXTRA=$'\n\n**January:** if your US-listed funds (VOO + AVUV) are over US$3,000, the tracker will ask you to move them to VUAA and AVGS.'
+          fi
+          printf '@%s Tomorrow (the 15th) is your monthly buy.\n\n1. Open the tracker: %s\n2. Do anything in the **To do** box first (rebalance, signal switch or the yearly move).\n3. Buy the fund it shows, then tap **I bought it**.%s\n' "$OWNER" "$SITE" "$EXTRA" > body.md
+          gh issue create --title "Monthly buy: $MONTH" --body-file body.md
