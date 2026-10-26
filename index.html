@@ -46,7 +46,8 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--fg); }
 .legend i.tgt { border-color: var(--behind); border-top-style: dotted; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); display: none; white-space: nowrap; z-index: 2; }
-.tip b { font-family: var(--mono); font-weight: 600; }
+.tip b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip { min-width: 180px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
 form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; align-items: end; }
 label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); min-width: 0; }
@@ -419,7 +420,7 @@ td.r, th.r { text-align: right; }
       add("Likely: ", hk(v)); add("Target: ", hk(tv));
       lines.filter(L => L !== main).forEach(L => add(`${L.r}%: `, hk(L.pts[Math.min(L.pts.length - 1, i)][1]), "muted"));
       tip.style.display = "block";
-      const bx = x(a) * r.width / W; tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, bx + 14 + tip.offsetWidth > box.clientWidth ? bx - tip.offsetWidth - 14 : bx + 14)) + "px"; tip.style.top = "8px";
+      tip.style.left = Math.round((m.l + 6) * r.width / W) + "px"; tip.style.top = "4px";   // fixed spot: it never jumps while you drag
     };
     const hide = () => { tip.style.display = "none"; dMain.setAttribute("visibility", "hidden"); dTgt.setAttribute("visibility", "hidden"); };
     svg.addEventListener("pointerdown", ev => { show(ev); });
