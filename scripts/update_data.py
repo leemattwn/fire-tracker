@@ -61,18 +61,19 @@ def signal(rows):
 
 
 def hk_cpi_probe():
-    """Temporary: look at the shape of the Census and Statistics Department CPI feed."""
-    out = {}
-    for name, url in {
-        "csd": "https://www.censtatd.gov.hk/api/get.php?id=510-60001&lang=en&full_series=1",
-        "fred": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=HKGCPIALLMINMEI",
-    }.items():
-        try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
-                raw = r.read().decode("utf-8", "replace")
-            out[name] = {"len": len(raw), "head": raw[:1500], "tail": raw[-800:]}
-        except Exception as e:
-            out[name] = {"error": str(e)}
+    """Temporary: summarise the Census and Statistics Department CPI feed."""
+    url = "https://www.censtatd.gov.hk/api/get.php?id=510-60001&lang=en&full_series=1"
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=90) as r:
+        raw = json.load(r)
+    ds = raw.get("dataSet", [])
+    keys = sorted({k for d in ds for k in d})
+    combos = {}
+    for d in ds:
+        k = "|".join(str(d.get(x, "")) for x in keys if x not in ("period", "figure", "sd_value"))
+        c = combos.setdefault(k, {"n": 0, "last": None})
+        c["n"] += 1
+        if d.get("freq") == "M": c["last"] = [d.get("period"), d.get("figure")]
+    out = {"top": list(raw.keys()), "header_keys": list(raw.get("header", {}).keys()), "record_keys": keys, "combos": combos}
     json.dump(out, open(os.path.join(os.path.dirname(OUT), "cpi_probe.json"), "w"), indent=1)
 
 
