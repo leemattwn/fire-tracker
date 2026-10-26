@@ -1,8 +1,3 @@
-yahoo ok ('2026-10-23', 7623.68017578125)
-stooq raw head: <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"></head><body><noscript>This site requires JavaScript to verify your browser. Please enable JavaScript an len 796
-stooq error Traceback (most recent call last):
-  File "<stdin>", line 10, in <module>
-  File "/home/runner/work/fire-tracker/fire-tracker/scripts/update_data.py", line 62, in stooq_spx
-    raise RuntimeError(f"stooq: {last}")
-RuntimeError: stooq: could not convert string to float: 'e.encode(c+n))'
-
+fred error TimeoutError('The read operation timed out')
+nasdaq ok 1.4 s, len 142 | head: {"data":null,"message":null,"status":{"rCode":400,"bCodeMessage":[{"code":1001,"errorMessage":"Symbol not exists."}],"developerMessage":null}} | tail: {"data":null,"message":null,"status":{"rCode":400,"bCodeMessage":[{"code":1001,"errorMessage":"Symbol not exists."}],"developerMessage":null}}
+cnbc ok 0.2 s, len 70080 | head: {"barData":{"priceBars":[{"open":"5903.2600","high":"5935.0900","low":"5829.5300","close":"5868.5500","volume":0,"tradeTime":"20250102000000","tradeTimeinMills" | tail: ompanyName":"S&P 500 Index","exchange":null},"requestDetails":{"symbol":".SPX","startTime":"20250101000000","endTime":"20261027000000","adjusted":"UNADJUSTED"}}
