@@ -106,7 +106,7 @@ td.r, th.r { text-align: right; }
 
 <main class="wrap">
   <header>
-    <span class="eyebrow">Retirement plan · all figures in today's HK dollars · saved on this device</span>
+    <span class="eyebrow">Retirement plan · saved on this device</span>
     <h1 id="title">Your plan</h1>
   </header>
 
@@ -125,9 +125,6 @@ td.r, th.r { text-align: right; }
       <label for="sLiving">Living costs a month now (HK$)<input id="sLiving" type="number" min="0" step="any" inputmode="decimal"></label>
       <h3 class="full">Retirement</h3>
       <label for="sIncome">Monthly income you want in retirement (today's HK$)<input id="sIncome" type="number" min="0" step="any" inputmode="decimal"></label>
-      <label for="sSwr">Withdrawal rate, % a year<input id="sSwr" type="number" min="0" step="any" inputmode="decimal"><span class="hint">3.3% is cautious for a retirement that may last 50+ years; 4% is the classic rule.</span></label>
-      <label for="sReturn">Assumed return, % a year after inflation<input id="sReturn" type="number" min="0" step="any" inputmode="decimal"></label>
-      <label for="sInfl">Inflation, % a year<input id="sInfl" type="number" min="0" step="any" inputmode="decimal"></label>
       <label for="sSv">Small-value share target (%)<input id="sSv" type="number" min="0" step="any" inputmode="decimal"></label>
       <p class="full small" id="sTargetNote"></p>
       <h3 class="full">What you own now (shares in IBKR)</h3>
@@ -215,8 +212,9 @@ td.r, th.r { text-align: right; }
     <div style="display:flex;flex-direction:column;gap:6px">
       <h2 id="chartTitle">Path to the target</h2>
     </div>
-    <div class="legend"><span><i></i>Your assumed return</span><span><i class="dash"></i>4% and 8% real</span><span><i class="tgt"></i>Target</span><span><i class="dot"></i>Check-ins (today's dollars)</span></div>
+    <div class="legend"><span><i></i>6% after inflation (likely)</span><span><i class="dash"></i>4% and 8%</span><span><i class="tgt"></i>Target, rising with prices</span><span><i class="dot"></i>Your balance</span></div>
     <div class="chartbox" id="chart"></div>
+    <p class="small muted" id="chartNote"></p>
   </section>
 
   <section class="panel" aria-labelledby="phTitle">
@@ -236,9 +234,6 @@ td.r, th.r { text-align: right; }
       <label for="pMonthly">Invested a month after that (HK$)<input id="pMonthly" type="number" min="0" step="any" required></label>
       <label for="pLiving">Living costs a month now (HK$)<input id="pLiving" type="number" min="0" step="any"><span class="hint">Sizes your emergency fund. It doesn't change FI age.</span></label>
       <label for="pIncome">Monthly income wanted in retirement (today's HK$)<input id="pIncome" type="number" min="1" step="any"></label>
-      <label for="pSwr">Withdrawal rate, % a year<input id="pSwr" type="number" min="0.5" max="10" step="any"></label>
-      <label for="pReturn">Assumed return, % a year after inflation<input id="pReturn" type="number" min="0" max="20" step="any" required><span class="hint" id="retHint"></span></label>
-      <label for="pInfl">Future inflation, % a year<input id="pInfl" type="number" min="-5" max="20" step="any" required><span class="hint" id="inflHint"></span></label>
       <label for="pStart">Balance when the plan started (HK$)<input id="pStart" type="number" min="0" step="any"></label>
       <label for="pSv">Small-value share target (%)<input id="pSv" type="number" min="0" max="100" step="any" required><span class="hint">Decides which fund "This month's buy" picks. It doesn't change FI age.</span></label>
     </form>
@@ -259,17 +254,19 @@ td.r, th.r { text-align: right; }
 (() => {
   // ageDate = the day the plan started; age = your age that day (worked out from dob)
   const DEFAULTS = { dob: "2008-09-12", ageDate: "2026-09-12", age: 18, gradAge: 23, studentMonthly: 1200, monthly: 25000, living: 10000,
-                     retireIncome: 27500, swr: 3.3, realReturn: 5, inflation: 2.5, startBalance: 0, svShare: 70 };
+                     retireIncome: 27500, swr: 4, realReturn: 6, inflation: 2.5, startBalance: 0, svShare: 70 };
   let S = { ...DEFAULTS };
   let checkins = [];
   let db = null, canWrite = true;
   const YR = 365.25 * 864e5;
+  const SWR = 4, RET = 6;             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
+  const futInfl = () => (MKT && MKT.cpi && isFinite(MKT.cpi.avg20) ? MKT.cpi.avg20 : 2.5);   // future inflation = Hong Kong's 20-year average
   function norm(raw) {
     raw = raw || {};
     const s = { ...DEFAULTS, ...raw };
     if (!raw.dob && raw.age != null && raw.ageDate) { const d = new Date(raw.ageDate); d.setFullYear(d.getFullYear() - Math.round(raw.age)); s.dob = d.toISOString().slice(0, 10); }
-    if (!(s.swr > 0)) s.swr = 3.3;
-    if (raw.retireIncome == null && raw.target > 0) s.retireIncome = Math.round(raw.target * s.swr / 100 / 12);   // older saves had a fixed target
+    if (raw.retireIncome == null && raw.target > 0) s.retireIncome = Math.round(raw.target * (raw.swr || 3.3) / 100 / 12);   // older saves had a fixed target
+    s.swr = SWR; s.realReturn = RET;                                                 // fixed: 4% withdrawals, 6% a year after inflation
     s.age = (new Date(s.ageDate) - new Date(s.dob)) / YR;
     s.target = s.retireIncome * 12 / (s.swr / 100);
     return s;
@@ -294,7 +291,7 @@ td.r, th.r { text-align: right; }
   // What to actually pay in this year: today's-money amount raised by inflation once a year from the plan start, rounded to HK$100.
   const yearsIn = () => Math.max(0, Math.floor((new Date(today()) - new Date(S.ageDate)) / YR));
   // Price level at date b relative to date a: actual Hong Kong CPI where published, your inflation setting beyond that.
-  const grow = (a, b) => Math.pow(1 + S.inflation / 100, (new Date(b) - new Date(a)) / YR);
+  const grow = (a, b) => Math.pow(1 + futInfl() / 100, (new Date(b) - new Date(a)) / YR);
   function inflFactor(a, b) {
     const C = MKT && MKT.cpi && MKT.cpi.index, L = MKT && MKT.cpi && MKT.cpi.latest;
     if (!C || !L) return grow(a, b);
@@ -317,7 +314,9 @@ td.r, th.r { text-align: right; }
     while (a < 90) { b = b * (1 + rm) + contribAt(a); a += 1 / 12; if (b >= S.target) return a; }
     return Infinity;
   }
-  const realOf = c => c.balance / Math.max(1, inflFactor(S.ageDate, c.date));
+  const realOf = c => c.balance / inflFactor(S.ageDate, c.date);                    // deflation counts too
+  const dateAtAge = a => new Date(new Date(S.dob).getTime() + a * YR).toISOString().slice(0, 10);
+  const nomAt = a => inflFactor(S.ageDate, dateAtAge(a));                           // price level at that age vs the plan start
 
   // ---------- acuity readout (progress to target, Snellen scale) ----------
   const ACUITY = [[0.1, "6/60"], [0.17, "6/36"], [0.25, "6/24"], [0.33, "6/18"], [0.5, "6/12"], [0.67, "6/9"], [0.8, "6/7.5"], [1, "6/6"]];
@@ -336,20 +335,20 @@ td.r, th.r { text-align: right; }
     if (!latest) {
       $("sLatest").textContent = "—"; $("sLatestSub").textContent = "Add your first check-in below";
       $("sPlan").textContent = hk(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "no check-in yet";
-      $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `on plan at ${S.realReturn}% real`;
+      $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `at ${RET}% a year after inflation`;
       $("sAcuity").textContent = acuity(S.startBalance / S.target); drawSnellen(S.startBalance / S.target);
       return;
     }
-    const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a);
-    $("sLatest").textContent = hk(real);
+    const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a) * nomAt(a), bal = latest.balance;
+    $("sLatest").textContent = hk(bal);
     $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)}`;
     $("sPlan").textContent = hk(plan);
-    const gap = real - plan, el = $("sGap");
+    const gap = bal - plan, el = $("sGap");
     if (plan <= 0) { el.className = "pill"; el.textContent = "plan just started"; }
     else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hk(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
     const fa = fiAge(a, real, S.realReturn);
     $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
-    $("sFiSub").textContent = isFinite(fa) ? `at ${S.realReturn}% a year after inflation` : "raise the monthly amount or return";
+    $("sFiSub").textContent = isFinite(fa) ? `at ${RET}% a year after inflation` : "raise the monthly amount";
     const p = real / S.target; $("sAcuity").textContent = acuity(p); drawSnellen(p);
   }
 
@@ -362,15 +361,18 @@ td.r, th.r { text-align: right; }
     const start = S.age;
     const fiHi = Math.min(70, fiAge(S.age, S.startBalance, 4));
     const end = Math.max(42, Math.ceil((isFinite(fiHi) ? fiHi : 60) + 1), ...checkins.map(c => Math.ceil(ageAt(c.date) + 1)));
-    const lines = [4, S.realReturn, 8].map(r => ({ r, pts: path(S.age, S.startBalance, r, end) }));
-    const realPts = checkins.map(c => [ageAt(c.date), realOf(c), c]);
-    const yMax = Math.max(S.target * 1.25, ...realPts.map(p => p[1] * 1.1));
+    const lines = [4, S.realReturn, 8].map(r => ({ r, pts: path(S.age, S.startBalance, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
+    const realPts = checkins.map(c => [ageAt(c.date), c.balance, c]);
+    const tgtPts = []; for (let a = start; a <= end + 1e-9; a += 1 / 12) tgtPts.push([a, S.target * nomAt(a)]);
+    const tgtAt = a => tgtPts[Math.max(0, Math.min(tgtPts.length - 1, Math.round((a - start) * 12)))][1];
+    const yMax = Math.max(tgtAt(end) * 1.15, ...realPts.map(p => p[1] * 1.1));
     const x = a => m.l + (a - start) / (end - start) * (W - m.l - m.r);
-    const y = v => H - m.b - Math.min(v, yMax) / yMax * (H - m.t - m.b);
+    const y = v => H - m.b - v / yMax * (H - m.t - m.b);
     const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Projected balance by age" }, null);
     const css = getComputedStyle(document.documentElement), C = n => css.getPropertyValue(n).trim();
+    const cp = el("clipPath", { id: "plotClip" }, el("defs", {}, svg)); el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b }, cp);
     // grid + y ticks
-    const step = yMax > 20e6 ? 5e6 : yMax > 8e6 ? 2e6 : yMax > 3e6 ? 1e6 : 5e5;
+    const step = yMax > 40e6 ? 10e6 : yMax > 20e6 ? 5e6 : yMax > 8e6 ? 2e6 : yMax > 3e6 ? 1e6 : 5e5;
     for (let v = 0; v <= yMax; v += step) {
       el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: C("--grid"), "stroke-width": 1 }, svg);
       const t = el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = hk(v).replace("HK$", "");
@@ -386,14 +388,14 @@ td.r, th.r { text-align: right; }
       el("line", { x1: x(a), x2: x(a), y1: m.t, y2: H - m.b, stroke: C("--line"), "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
       const t = el("text", { x: x(a) + 4, y: m.t + 10, "font-size": 11, fill: C("--muted") }, svg); t.textContent = lab; } });
     // target
-    el("line", { x1: m.l, x2: W - m.r, y1: y(S.target), y2: y(S.target), stroke: C("--behind"), "stroke-width": 1.5, "stroke-dasharray": "2 4" }, svg);
-    const tl = el("text", { x: m.l + 6, y: y(S.target) - 6, "font-size": 11, fill: C("--behind"), "font-family": "IBM Plex Mono, monospace" }, svg); tl.textContent = "target " + hk(S.target);
+    el("path", { d: tgtPts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--behind"), "stroke-width": 1.5, "stroke-dasharray": "2 4" }, svg);
+    const tl = el("text", { x: m.l + 6, y: y(tgtAt(start)) + 16, "font-size": 11, fill: C("--behind"), "font-family": "IBM Plex Mono, monospace" }, svg); tl.textContent = `target ${hk(tgtAt(start))}, rising`;
     // paths
     lines.forEach(L => {
       const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("");
       const main = L.r === S.realReturn;
-      el("path", { d, fill: "none", stroke: main ? C("--accent") : C("--muted"), "stroke-width": main ? 2.5 : 1.5, "stroke-dasharray": main ? "" : "5 4", "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
-      const last = L.pts[L.pts.length - 1];
+      el("path", { d, fill: "none", stroke: main ? C("--accent") : C("--muted"), "stroke-width": main ? 2.5 : 1.5, "stroke-dasharray": main ? "" : "5 4", "stroke-linejoin": "round", "stroke-linecap": "round", "clip-path": "url(#plotClip)" }, svg);
+      const vis = L.pts.filter(p => p[1] <= yMax), last = vis.length ? vis[vis.length - 1] : L.pts[0];
       if (!main) { const t = el("text", { x: Math.min(x(last[0]) - 4, W - m.r - 4), y: Math.max(m.t + 10, y(last[1]) - 6), "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); t.textContent = L.r + "%"; }
     });
     // check-ins
@@ -408,7 +410,8 @@ td.r, th.r { text-align: right; }
       rule.setAttribute("x1", x(a)); rule.setAttribute("x2", x(a)); rule.setAttribute("visibility", "visible");
       tip.textContent = "";
       const head = document.createElement("div"); head.className = "muted"; head.textContent = "Age " + a.toFixed(1); tip.appendChild(head);
-      lines.forEach(L => { const i = Math.min(L.pts.length - 1, Math.round((a - start) * 12)); const row = document.createElement("div"); row.textContent = `${L.r}% real: `; const b = document.createElement("b"); b.textContent = hk(L.pts[i][1]); row.appendChild(b); tip.appendChild(row); });
+      lines.forEach(L => { const i = Math.min(L.pts.length - 1, Math.round((a - start) * 12)); const row = document.createElement("div"); row.textContent = `${L.r}% after inflation: `; const b = document.createElement("b"); b.textContent = hk(L.pts[i][1]); row.appendChild(b); tip.appendChild(row); });
+      { const row = document.createElement("div"); row.textContent = "Target: "; const b = document.createElement("b"); b.textContent = hk(tgtAt(a)); row.appendChild(b); tip.appendChild(row); }
       tip.style.display = "block";
       const bx = x(a) * r.width / W; tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, bx + 12 + tip.offsetWidth > box.clientWidth ? bx - tip.offsetWidth - 12 : bx + 12)) + "px"; tip.style.top = "8px";
     });
@@ -422,12 +425,12 @@ td.r, th.r { text-align: right; }
     if (!checkins.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No check-ins yet. Save your first monthly check-in to start tracking against the plan."; wrap.appendChild(e); return; }
     const tw = document.createElement("div"); tw.className = "tablewrap";
     const t = document.createElement("table");
-    t.innerHTML = '<thead><tr><th>Date</th><th class="r">Age</th><th class="r">Entered</th><th class="r">Today\'s HK$</th><th class="r">vs plan</th><th>Note</th><th></th></tr></thead>';
+    t.innerHTML = '<thead><tr><th>Date</th><th class="r">Age</th><th class="r">Balance</th><th class="r">vs plan</th><th>Note</th><th></th></tr></thead>';
     const tb = document.createElement("tbody");
     [...checkins].reverse().forEach(c => {
-      const tr = document.createElement("tr"), a = ageAt(c.date), real = realOf(c), plan = valueAt(S.realReturn, a), gap = real - plan;
-      const cells = [c.date, a.toFixed(1), hkExact(c.balance), hkFull(real), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", c.note || ""];
-      cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 4) td.className = "r num"; if (i === 4 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
+      const tr = document.createElement("tr"), a = ageAt(c.date), plan = valueAt(S.realReturn, a) * nomAt(a), gap = c.balance - plan;
+      const cells = [c.date, a.toFixed(1), hkExact(c.balance), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", c.note || ""];
+      cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 3) td.className = "r num"; if (i === 3 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
       const td = document.createElement("td"); td.className = "r";
       if (db && canWrite) {
         const del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "Delete";
@@ -464,7 +467,7 @@ td.r, th.r { text-align: right; }
       { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
         "Build 2–3 years of spending in IB01 as a cash buffer.", "Re-check your retirement income."] },
       { name: "Retired", when: isFinite(fa) ? `from about ${fa.toFixed(0)}` : "at the target", on: isFinite(fa) && nowAge >= fa, items: [
-        `Withdraw ${hkFull(S.retireIncome)} a month (${S.swr}% a year).`, "Spend from the buffer after bad years.", "MPF from 65."] },
+        `Withdraw ${hkFull(S.retireIncome)} a month in today's money (4% a year), raised with inflation.`, "Spend from the buffer after bad years.", "MPF from 65."] },
     ];
     const box = $("phases"); box.textContent = "";
     P.forEach(p => {
@@ -475,20 +478,17 @@ td.r, th.r { text-align: right; }
       const ul = document.createElement("ul"); p.items.forEach(t => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); }); d.appendChild(ul);
       box.appendChild(d);
     });
-    const nomNow = inflFactor(S.ageDate, today());                                 // prices since the plan started
-    const fiDate = isFinite(fa) ? addYears(S.dob, Math.floor(fa)) : null, nomFI = isFinite(fa) ? nomNow * Math.pow(1 + S.inflation / 100, fa - nowAge) : NaN;
-    $("spendNote").textContent = `To draw ${hkFull(S.retireIncome)} a month in today's money at a ${S.swr}% withdrawal rate, you need ${hk(S.target)}.`
-      + (S.living > 0 ? ` That's ${(S.retireIncome / S.living).toFixed(1)}× your living costs now.` : "")
-      + (fiDate ? ` In ${fiDate.slice(0, 4)} money (age ${fa.toFixed(1)}), with ${S.inflation}% inflation, that's about ${hkFull(S.retireIncome * nomFI)} a month and a ${hk(S.target * nomFI)} target. Same plan, just counted in future dollars.` : "");
-    const nomR = ((1 + S.realReturn / 100) * (1 + S.inflation / 100) - 1) * 100;
-    $("retHint").textContent = `About ${nomR.toFixed(1)}% a year before inflation, the number you'd see in IBKR.`;
-    const cp = MKT && MKT.cpi;
-    $("inflHint").textContent = cp ? `Live Hong Kong CPI: ${cp.yoy}% over the last 12 months (to ${cp.latest}); ${cp.avg5}% a year over 5 years, ${cp.avg10}% over 10, ${cp.avg20}% over 20. Past months use the real CPI; this setting is only for the future.`
-                                   : "Live CPI hasn't loaded; using this setting for past months too.";
+    const fiNom = isFinite(fa) ? S.target * nomAt(fa) : NaN;
+    $("spendNote").textContent = `To draw ${hkFull(S.retireIncome)} a month in today's money at a 4% withdrawal rate, you need ${hk(S.target)} in today's money.`
+      + (isFinite(fiNom) ? ` With prices rising, that's about ${hk(fiNom)} (${hkFull(S.retireIncome * nomAt(fa))} a month) by ${dateAtAge(fa).slice(0, 4)}, when you're projected to get there.` : "")
+      + (S.living > 0 ? ` That's ${(S.retireIncome / S.living).toFixed(1)}× your living costs now.` : "");
+    const cp = MKT && MKT.cpi, nomR = ((1 + RET / 100) * (1 + futInfl() / 100) - 1) * 100;
+    $("chartNote").textContent = (cp ? `Prices so far follow Hong Kong's official CPI (${cp.yoy}% over the 12 months to ${cp.latest}), so the target falls if there's deflation. ` : "")
+      + `Ahead, it assumes ${futInfl()}% inflation a year${cp ? " (the 20-year average)" : ""} and a likely ${RET}% return after inflation, about ${nomR.toFixed(1)}% before. 4% and 8% show a bad and a good outcome.`;
   }
 
   // ---------- forms ----------
-  const F = { pDob: "dob", pPlanStart: "ageDate", pGrad: "gradAge", pStudent: "studentMonthly", pMonthly: "monthly", pLiving: "living", pIncome: "retireIncome", pSwr: "swr", pReturn: "realReturn", pInfl: "inflation", pStart: "startBalance", pSv: "svShare" };
+  const F = { pDob: "dob", pPlanStart: "ageDate", pGrad: "gradAge", pStudent: "studentMonthly", pMonthly: "monthly", pLiving: "living", pIncome: "retireIncome", pStart: "startBalance", pSv: "svShare" };
   function fillPlanForm() { for (const id in F) { const inp = $(id); if (document.activeElement !== inp) inp.value = S[F[id]]; } }
   function readPlanForm() {
     const next = { ...S };
@@ -511,14 +511,14 @@ td.r, th.r { text-align: right; }
   }
   // Recalculate as you type; save automatically a moment after you stop.
   $("planForm").addEventListener("input", () => {
-    const next = readPlanForm(); if (!next) { $("pStatus").textContent = "Enter a retirement income and withdrawal rate above zero."; return; }
+    const next = readPlanForm(); if (!next) { $("pStatus").textContent = "Enter a retirement income above zero."; return; }
     S = next; renderPlanOutputs(); $("pStatus").textContent = "Updated. Saving shortly…";
     clearTimeout(planTimer); planTimer = setTimeout(() => { planTimer = null; savePlan(S); }, 900);
   });
   $("planForm").addEventListener("submit", async ev => {
     ev.preventDefault(); clearTimeout(planTimer); planTimer = null;
     const next = readPlanForm();
-    if (!next) { $("pStatus").textContent = "Enter a retirement income and withdrawal rate above zero."; return; }
+    if (!next) { $("pStatus").textContent = "Enter a retirement income above zero."; return; }
     S = next; renderAll();
     await savePlan(next);
   });
@@ -681,7 +681,7 @@ td.r, th.r { text-align: right; }
   });
 
   // ---------- first-run setup ----------
-  const SF = { sDob: "dob", sGrad: "gradAge", sStudent: "studentMonthly", sMonthly: "monthly", sLiving: "living", sIncome: "retireIncome", sSwr: "swr", sReturn: "realReturn", sInfl: "inflation", sSv: "svShare" };
+  const SF = { sDob: "dob", sGrad: "gradAge", sStudent: "studentMonthly", sMonthly: "monthly", sLiving: "living", sIncome: "retireIncome", sSv: "svShare" };
   let setupAgain = false;
   function readSetup() {
     const s = { ...S };
@@ -692,8 +692,8 @@ td.r, th.r { text-align: right; }
   function setupNotes() {
     const { s, sh } = readSetup(), n = norm({ ...s, ageDate: today() });
     $("sTargetNote").textContent = n.retireIncome > 0 && n.swr > 0
-      ? `You'll need about ${hk(n.target)} in today's money: ${hkFull(n.retireIncome)} × 12 ÷ ${n.swr}%. ${isFinite(n.age) ? `You're ${n.age.toFixed(1)} today.` : ""}`
-      : "Enter a retirement income and withdrawal rate.";
+      ? `You'll need about ${hk(n.target)} in today's money (${hkFull(n.retireIncome)} × 12 ÷ 4%), rising with inflation. ${isFinite(n.age) ? `You're ${n.age.toFixed(1)} today.` : ""}`
+      : "Enter a retirement income.";
     const V = vals(sh), tot = planUsd(V);
     for (const t in HOLD) $("shv" + t).textContent = isFinite(px(t)) ? (sh[t] > 0 ? `${usd2(V[t])} · ${usd2(px(t))} each` : `${usd2(px(t))} each`) : (MKT ? "no price today" : "loading price…");
     $("sHoldNote").textContent = MKT ? `Starting balance: ${usd2(tot)}, about ${hkFull(tot * fxRate())} at HK$${fxRate()} per US$.` : "Loading prices… your starting balance appears here.";
@@ -715,7 +715,7 @@ td.r, th.r { text-align: right; }
     ev.preventDefault();
     const { s, sh } = readSetup();
     if (!s.dob) { $("setupStatus").textContent = "Enter your date of birth."; return; }
-    if (!(s.retireIncome > 0) || !(s.swr > 0)) { $("setupStatus").textContent = "Enter the monthly income you want in retirement and a withdrawal rate."; return; }
+    if (!(s.retireIncome > 0) || !(s.swr > 0)) { $("setupStatus").textContent = "Enter the monthly income you want in retirement."; return; }
     const V = vals(sh), tot = planUsd(V);
     if (tot > 0 && !MKT) { $("setupStatus").textContent = "Prices are still loading. Wait a moment, then press Start again."; return; }
     const next = norm({ ...s, ageDate: today(), startBalance: Math.round(tot * fxRate() * 100) / 100, setupDone: true });
