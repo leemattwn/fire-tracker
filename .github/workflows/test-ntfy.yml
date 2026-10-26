@@ -1,8 +1,6 @@
 name: Test phone notification
 on:
   workflow_dispatch:
-  push:
-    paths: [".github/workflows/test-ntfy.yml"]
 jobs:
   test:
     runs-on: ubuntu-latest
