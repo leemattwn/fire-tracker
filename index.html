@@ -48,6 +48,9 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .legend i.tgt { border-color: var(--behind); border-top-style: dotted; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); display: none; white-space: nowrap; z-index: 2; }
 .tip b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; align-self: flex-start; }
+.seg button { border: 0; border-radius: 0; background: transparent; color: var(--muted); font-weight: 600; padding: 7px 14px; }
+.seg button[aria-selected="true"] { background: var(--accent); color: var(--panel); }
 .readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; min-height: 84px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 .readout .h { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 .readout b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -221,6 +224,7 @@ td.r, th.r { text-align: right; }
       <h2 id="chartTitle">Your balance and where it's heading</h2>
     </div>
     <div class="legend"><span><i></i>Likely from your balance now (6%)</span><span><i class="dash"></i>Bad (4%) and good (8%)</span><span><i class="dot"></i>Your balance</span><span><i class="fi"></i>Reaching your target (FI)</span></div>
+    <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" id="vProj" aria-selected="true">Projection</button><button type="button" role="tab" id="vHist" aria-selected="false">Your history</button></div>
     <div class="readout" id="chartRead" aria-live="polite"></div>
     <div class="chartbox" id="chart"></div>
     <p class="small muted" id="chartNote"></p>
@@ -264,7 +268,7 @@ td.r, th.r { text-align: right; }
   const DEFAULTS = { dob: "2008-09-12", ageDate: "2026-09-12", age: 18, gradAge: 23, studentMonthly: 1200, monthly: 25000, living: 10000,
                      retireIncome: 27500, swr: 4, realReturn: 6, inflation: 2.5, startBalance: 0, svShare: 70 };
   let S = { ...DEFAULTS };
-  let checkins = [];
+  let checkins = [], daily = [];       // daily = your balance on each day you opened the tracker
   let db = null, canWrite = true;
   const YR = 365.25 * 864e5;
   const SWR = 4, RET = 6, SV = 70;   // 70% small value / 30% S&P 500 is fixed             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
@@ -361,16 +365,26 @@ td.r, th.r { text-align: right; }
   // ---------- chart ----------
   const NS = "http://www.w3.org/2000/svg";
   function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  let VIEW = "proj";
+  try { if (localStorage.getItem("chartView") === "hist") VIEW = "hist"; } catch (e) {}
+  function setView(v) { VIEW = v; try { localStorage.setItem("chartView", v); } catch (e) {} $("vProj").setAttribute("aria-selected", v === "proj"); $("vHist").setAttribute("aria-selected", v === "hist"); renderChart(); }
   function renderChart() {
+    const HIST = VIEW === "hist";
+    document.querySelector("#chartTitle").closest("section").querySelector(".legend").hidden = HIST; $("chartNote").hidden = HIST;
     const box = $("chart"); box.querySelectorAll("svg").forEach(s => s.remove());
     const W = Math.max(300, box.clientWidth), H = 340, m = { l: 64, r: 16, t: 14, b: 34 };
     const last = checkins.length ? checkins[checkins.length - 1] : null;
     const a0 = last ? ageAt(last.date) : S.age, b0 = last ? realOf(last) : S.startBalance;
-    const start = Math.min(S.age, a0), fa = fiAge(a0, b0, RET), fa4 = fiAge(a0, b0, 4);
-    const end = Math.max(a0 + 5, Math.ceil(Math.min(70, isFinite(fa4) ? fa4 : isFinite(fa) ? fa + 8 : 65)) + 1);
+    let start = Math.min(S.age, a0); const fa = fiAge(a0, b0, RET), fa4 = fiAge(a0, b0, 4);
+    let end = Math.max(a0 + 5, Math.ceil(Math.min(70, isFinite(fa4) ? fa4 : isFinite(fa) ? fa + 8 : 65)) + 1);
     const fan = [4, RET, 8].map(r => ({ r, pts: path(a0, b0, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
+    const byDate = new Map(); daily.forEach(d => byDate.set(d.date, { date: d.date, balance: d.balance })); checkins.forEach(c => byDate.set(c.date, { date: c.date, balance: c.balance, ci: true }));
+    const pastPts = [...byDate.values()].sort((p, q) => (p.date < q.date ? -1 : 1)).map(p => [ageAt(p.date), p.balance, p.date, !!p.ci]);
     const main = fan[1], hist = checkins.map(c => [ageAt(c.date), c.balance]);
-    const yMax = Math.max(main.pts[main.pts.length - 1][1] * 1.05, ...hist.map(p => p[1] * 1.1), 1);
+    if (HIST) {                                        // history view: just your recorded balances, first record to today
+      start = pastPts.length ? pastPts[0][0] : a0; end = Math.max(start + 1 / 12, pastPts.length ? pastPts[pastPts.length - 1][0] : a0);
+    }
+    const yMax = HIST ? Math.max(...pastPts.map(p => p[1] * 1.1), 1) : Math.max(main.pts[main.pts.length - 1][1] * 1.05, ...pastPts.map(p => p[1] * 1.1), 1);
     const x = a => m.l + (a - start) / (end - start) * (W - m.l - m.r);
     const y = v => H - m.b - v / yMax * (H - m.t - m.b);
     const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Your balance and where it's heading" }, null);
@@ -382,18 +396,23 @@ td.r, th.r { text-align: right; }
       const t = el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = hk(v).replace("HK$", "");
     }
     const xs = (end - start) > 20 ? 5 : 2;
+    if (HIST) {                                        // date labels
+      const n = Math.max(1, Math.min(3, Math.round((end - start) * 12)));
+      for (let k = 0; k <= n; k++) { const a = start + (end - start) * k / n, d = new Date(dateAtAge(a)); const t = el("text", { x: x(a), y: H - 12, "text-anchor": k === 0 ? "start" : k === n ? "end" : "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }); }
+    } else
     for (let a = Math.ceil(start / xs) * xs; a <= end; a += xs) { const t = el("text", { x: x(a), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = a; }
-    const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age";
-    [[a0, "now"], [S.gradAge, "work"]].forEach(([a, lab]) => { if (a > start + 0.3 && a < end) {
+    if (!HIST) { const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age"; }
+    if (!HIST) [[a0, "now"], [S.gradAge, "work"]].forEach(([a, lab]) => { if (a > start + 0.3 && a < end) {
       el("line", { x1: x(a), x2: x(a), y1: m.t, y2: H - m.b, stroke: C("--line"), "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
       const t = el("text", { x: x(a) + 4, y: m.t + 10, "font-size": 11, fill: C("--muted") }, svg); t.textContent = lab; } });
-    fan.forEach(L => {
+    if (!HIST) fan.forEach(L => {
       const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), isMain = L === main;
       el("path", { d, fill: "none", stroke: isMain ? C("--accent") : C("--muted"), "stroke-width": isMain ? 2.5 : 1.5, "stroke-dasharray": isMain ? "" : "5 4", "stroke-linejoin": "round", "clip-path": "url(#plotClip)" }, svg);
     });
-    if (hist.length > 1) el("path", { d: hist.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
+    if (pastPts.length > 1) el("path", { d: pastPts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
     hist.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 3.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
-    if (isFinite(fa) && fa <= end) {                                   // where the likely line reaches your target
+    if (HIST && pastPts.length < 2) { const t = el("text", { x: (m.l + W - m.r) / 2, y: H / 2, "text-anchor": "middle", "font-size": 13, fill: C("--muted") }, svg); t.textContent = "Your history fills in each day you open the tracker."; }
+    if (!HIST && isFinite(fa) && fa <= end) {                          // where the likely line reaches your target
       const fv = S.target * nomAt(fa);
       el("circle", { cx: x(fa), cy: y(fv), r: 6, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2.5 }, svg);
       const t = el("text", { x: x(fa) - 8, y: y(fv) - 10, "text-anchor": "end", "font-size": 11, fill: C("--behind"), "font-weight": 600 }, svg); t.textContent = `FI at ${fa.toFixed(1)}`;
@@ -402,20 +421,38 @@ td.r, th.r { text-align: right; }
     const rd = $("chartRead");
     const dMain = el("circle", { r: 6, fill: C("--accent"), stroke: C("--panel"), "stroke-width": 2, visibility: "hidden" }, svg);
     const at = (L, a) => L.pts[Math.max(0, Math.min(L.pts.length - 1, Math.round((a - a0) * 12)))][1];
-    const balAt = a => { let b = null; for (const p of hist) if (p[0] <= a + 1e-6) b = p; return b; };
+    // your balance at any past age: exact on a recorded day, straight-line between recorded days
+    const balAt = a => {
+      if (!pastPts.length || a < pastPts[0][0] - 1e-6) return null;
+      for (let k = 0; k < pastPts.length; k++) {
+        const p = pastPts[k], q = pastPts[k + 1];
+        if (Math.abs(a - p[0]) < 1 / 365 || !q) return a <= p[0] + 1 / 365 ? { v: p[1], exact: p[2] } : null;
+        if (a < q[0]) { const f = (a - p[0]) / (q[0] - p[0]); return Math.abs(a - q[0]) < 1 / 365 ? { v: q[1], exact: q[2] } : { v: p[1] + f * (q[1] - p[1]), from: p[2], to: q[2] }; }
+      }
+      return null;
+    };
     function fill(a, live) {
       rd.textContent = "";
       const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
-      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : "Drag along the chart to see any age", null, "h");
-      const past = a < a0 - 1e-6, b = balAt(a);
-      add("Your balance: ", past || !live ? (b ? hk(b[1]) : "—") : "—");
+      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : HIST ? "Drag along the line to see any day" : "Drag along the chart to see any age", null, "h");
+      if (HIST) {
+        const b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null), first = pastPts[0];
+        if (live) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · recorded` : `Between ${b.from} and ${b.to} (estimated)`) : "—";
+        add("Your balance: ", b ? hk(b.v) : "—");
+        add("Change: ", first && b ? `${b.v >= first[1] ? "+" : "−"}${hk(Math.abs(b.v - first[1]))}` : "—");
+        add("First record: ", first ? hk(first[1]) : "—", "muted"); add("Days recorded: ", `${pastPts.length}`, "muted");
+        return;
+      }
+      const past = a < a0 - 1e-6, b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null);
+      add("Your balance: ", (past || !live) && b ? hk(b.v) : "—");
+      if (live && past) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · age ${a.toFixed(1)} · recorded` : `Age ${a.toFixed(1)} · between ${b.from} and ${b.to}`) : `Age ${a.toFixed(1)} · before your first record`;
       add(`Likely (${RET}%): `, past ? "—" : hk(at(main, a)));
       add("Bad (4%): ", past ? "—" : hk(at(fan[0], a)), "muted"); add("Good (8%): ", past ? "—" : hk(at(fan[2], a)), "muted");
     }
     const show = ev => {
       const r = svg.getBoundingClientRect(), pxl = (ev.clientX - r.left) * W / r.width;
       const a = Math.max(start, Math.min(end, start + (pxl - m.l) / (W - m.l - m.r) * (end - start)));
-      const b = balAt(a), v = a < a0 ? (b ? b[1] : null) : at(main, a), ax = a < a0 ? (b ? b[0] : a) : a;
+      const b = HIST || a < a0 ? balAt(a) : null, v = HIST || a < a0 ? (b ? b.v : null) : at(main, a), ax = a;
       if (v != null) { dMain.setAttribute("cx", x(ax)); dMain.setAttribute("cy", y(Math.min(v, yMax))); dMain.setAttribute("visibility", "visible"); } else dMain.setAttribute("visibility", "hidden");
       fill(a, true);
     };
@@ -712,6 +749,15 @@ td.r, th.r { text-align: right; }
     catch (e) { $("hStatus").textContent = "Couldn't save. Try again in a moment."; }
   });
 
+  // ---------- daily balance log: one point per day you open the tracker, at that day's prices ----------
+  async function recordDaily() {
+    if (!MKT || !db || !S.setupDone || missingPx().length) return;
+    const usdTot = planUsd(vals()); if (!(usdTot > 0)) return;
+    const date = today(), bal = Math.round(usdTot * fxRate() * 100) / 100, prev = daily.find(d => d.date === date);
+    if (prev && Math.abs(prev.balance - bal) < 0.005) return;
+    await db.collection("daily").doc("d" + date.replace(/-/g, "")).set({ date, balance: bal });
+  }
+
   // ---------- "I bought it" ----------
   const FEE = t => (t === "VOO" || t === "AVUV" ? 0.35 : t === "CASH" || t === "EF" ? 0 : 1.70);
   const fname = t => (t === "EF" ? "HK$ to your emergency fund" : t === "CASH" ? "US$ cash waiting" : t);
@@ -808,9 +854,11 @@ td.r, th.r { text-align: right; }
       MKT = await r.json();
     } catch (e) { MKT = null; }
     renderSignal(); renderAll();
-    if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
+    if (document.body.classList.contains("in-setup")) setupNotes(); else { autoCheckin(); recordDaily(); }
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
+  $("vProj").addEventListener("click", () => setView("proj")); $("vHist").addEventListener("click", () => setView("hist"));
+  $("vProj").setAttribute("aria-selected", VIEW === "proj"); $("vHist").setAttribute("aria-selected", VIEW === "hist");
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
   renderAll();
 
@@ -820,7 +868,7 @@ td.r, th.r { text-align: right; }
     let state = null;
     try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
     if (!state || !state.docs) {
-      state = { docs: {}, checkins: {} };
+      state = { docs: {}, checkins: {}, daily: {} };
     }
     let ok = true;
     const listeners = [];
@@ -831,9 +879,9 @@ td.r, th.r { text-align: right; }
       doc(path) { return {
         set: async d => { state.docs[path] = JSON.parse(JSON.stringify(d)); save(); },
         onSnapshot(cb) { const f = () => { const d = state.docs[path]; cb({ id: path.split("/").pop(), exists: d !== undefined, data: () => d }); }; listeners.push(f); f(); return () => {}; } }; },
-      collection() { return {
-        doc: id => ({ set: async d => { state.checkins[id] = JSON.parse(JSON.stringify(d)); save(); }, delete: async () => { delete state.checkins[id]; save(); } }),
-        orderBy() { return { onSnapshot(cb) { const f = () => { const docs = Object.entries(state.checkins).sort((a, b) => (a[1].date < b[1].date ? -1 : a[1].date > b[1].date ? 1 : 0)).map(([id, d]) => ({ id, data: () => d })); cb({ docs }); }; listeners.push(f); f(); return () => {}; } }; } }; },
+      collection(name) { const col = () => (state[name] = state[name] || {}); return {
+        doc: id => ({ set: async d => { col()[id] = JSON.parse(JSON.stringify(d)); save(); }, delete: async () => { delete col()[id]; save(); } }),
+        orderBy() { return { onSnapshot(cb) { const f = () => { const docs = Object.entries(col()).sort((a, b) => (a[1].date < b[1].date ? -1 : a[1].date > b[1].date ? 1 : 0)).map(([id, d]) => ({ id, data: () => d })); cb({ docs }); }; listeners.push(f); f(); return () => {}; } }; } }; },
       exportJSON: () => JSON.stringify(state, null, 1),
       importJSON: t => { const s = JSON.parse(t); if (!s || typeof s.docs !== "object" || typeof s.checkins !== "object") throw new Error("bad"); state = s; save(); },
     };
@@ -849,6 +897,7 @@ td.r, th.r { text-align: right; }
   });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; fillHoldForm(); renderBuy(); } });
   db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });
+  db.collection("daily").orderBy("date").onSnapshot(q => { daily = q.docs.map(d => d.data()).filter(c => c.date && isFinite(c.balance)); renderChart(); });
   $("bkDown").addEventListener("click", () => {
     try {
       const blob = new Blob([db.exportJSON()], { type: "application/json" });
