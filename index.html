@@ -321,6 +321,17 @@ td.r, th.r { text-align: right; }
     return pts;
   }
   function valueAt(rPct, age) { const p = path(S.age, S.startBalance, rPct, age); return p[p.length - 1][1]; }
+  // What the plan expected on a given date (today's money): growth day by day, and a buy only on each 15th after the plan
+  // started. (The month-step path above would count this month's buy as soon as any time had passed.)
+  function planAt(d) {
+    const m = Math.pow(1 + S.realReturn / 100, 1 / 12) - 1, MON = YR / 12, end = new Date(d), s = new Date(S.ageDate);
+    let b = S.startBalance, last = s, next = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + (s.getUTCDate() >= 15 ? 1 : 0), 15));
+    while (next <= end) {
+      b = b * Math.pow(1 + m, (next - last) / MON) + contribAt(ageAt(next.toISOString().slice(0, 10)));
+      last = next; next = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + 1, 15));
+    }
+    return b * Math.pow(1 + m, Math.max(0, end - last) / MON);
+  }
   function fiAge(startAge, startBal, rPct) {
     const rm = Math.pow(1 + rPct / 100, 1 / 12) - 1; let a = startAge, b = startBal;
     if (b >= S.target) return a;
@@ -350,7 +361,7 @@ td.r, th.r { text-align: right; }
       drawProgress(S.startBalance / S.target);
       return;
     }
-    const a = ageAt(latest.date), real = realOf(latest), plan = valueAt(S.realReturn, a) * nomAt(a), bal = latest.balance;
+    const a = ageAt(latest.date), real = realOf(latest), plan = planAt(latest.date) * nomAt(a), bal = latest.balance;
     $("sLatest").textContent = hk(bal);
     $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)}`;
     $("sPlan").textContent = hk(plan);
@@ -474,7 +485,7 @@ td.r, th.r { text-align: right; }
     t.innerHTML = '<thead><tr><th>Date</th><th class="r">Age</th><th class="r">Balance</th><th class="r">vs plan</th><th>Note</th><th></th></tr></thead>';
     const tb = document.createElement("tbody");
     [...checkins].reverse().forEach(c => {
-      const tr = document.createElement("tr"), a = ageAt(c.date), plan = valueAt(S.realReturn, a) * nomAt(a), gap = c.balance - plan;
+      const tr = document.createElement("tr"), a = ageAt(c.date), plan = planAt(c.date) * nomAt(a), gap = c.balance - plan;
       const cells = [c.date, a.toFixed(1), hkExact(c.balance), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", c.note || ""];
       cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 3) td.className = "r num"; if (i === 3 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
       const td = document.createElement("td"); td.className = "r";
