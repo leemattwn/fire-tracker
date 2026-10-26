@@ -133,10 +133,8 @@ td.r, th.r { text-align: right; }
       <h3 class="full">What you own now (shares in IBKR)</h3>
       <label for="shVUAA">VUAA<input id="shVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVUAA">—</span></label>
       <label for="shVOO">VOO<input id="shVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVOO">—</span></label>
-      <label for="shI500">I500<input id="shI500" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvI500">—</span></label>
       <label for="shAVUV">AVUV<input id="shAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvAVUV">—</span></label>
       <label for="shAVGS">AVGS<input id="shAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvAVGS">—</span></label>
-      <label for="shUSSC">USSC<input id="shUSSC" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvUSSC">—</span></label>
       <label for="shIB01">IB01, parked<input id="shIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvIB01">—</span></label>
       <label for="shEF">IB01, emergency fund<input id="shEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvEF">—</span></label>
       <p class="full small" id="sHoldNote"></p>
@@ -182,7 +180,7 @@ td.r, th.r { text-align: right; }
       <div class="sides" id="sides"></div>
     </div>
     <form id="boughtForm" class="boughtform" autocomplete="off" hidden>
-      <label for="bfFund">Fund<select id="bfFund"><option value="VUAA">VUAA</option><option value="VOO">VOO</option><option value="I500">I500</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="USSC">USSC</option><option value="IB01">IB01 (parked, signal off)</option><option value="EF">IB01 (emergency fund)</option></select></label>
+      <label for="bfFund">Fund<select id="bfFund"><option value="VUAA">VUAA</option><option value="VOO">VOO</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="IB01">IB01 (parked, signal off)</option><option value="EF">IB01 (emergency fund)</option></select></label>
       <label for="bfShares">Shares bought<input id="bfShares" type="number" min="0" step="any" inputmode="decimal"></label>
       <p class="full hint" id="bfHint"></p>
       <div class="btnrow"><button type="submit">Add to my holdings</button><button type="button" class="ghost" id="bfCancel">Cancel</button></div>
@@ -193,10 +191,8 @@ td.r, th.r { text-align: right; }
       <form id="hForm" autocomplete="off" style="margin-top:12px">
         <label for="hVUAA">VUAA<input id="hVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVUAA">—</span></label>
         <label for="hVOO">VOO<input id="hVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVOO">—</span></label>
-        <label for="hI500">I500<input id="hI500" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vI500">—</span></label>
         <label for="hAVUV">AVUV<input id="hAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVUV">—</span></label>
         <label for="hAVGS">AVGS<input id="hAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVGS">—</span></label>
-        <label for="hUSSC">USSC<input id="hUSSC" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vUSSC">—</span></label>
         <label for="hIB01">IB01, parked<input id="hIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIB01">—</span></label>
         <label for="hEF">IB01, emergency fund<input id="hEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vEF">—</span></label>
       </form>
@@ -541,8 +537,8 @@ td.r, th.r { text-align: right; }
     await savePlan(next);
   });
   // ---------- holdings and this month's buy ----------
-  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hI500: "I500", hAVUV: "AVUV", hAVGS: "AVGS", hUSSC: "USSC", hIB01: "IB01", hEF: "EF" };
-  let HOLD = { VUAA: 0, VOO: 0, I500: 0, AVUV: 0, AVGS: 0, USSC: 0, IB01: 0, EF: 0 };   // shares; EF = IB01 held as the emergency fund (outside the plan)
+  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hAVUV: "AVUV", hAVGS: "AVGS", hIB01: "IB01", hEF: "EF" };
+  let HOLD = { VUAA: 0, VOO: 0, AVUV: 0, AVGS: 0, IB01: 0, EF: 0 };   // shares; EF = IB01 held as the emergency fund (outside the plan)
   let MKT = null;                                                                    // data/market.json
   const fxRate = () => (MKT && +MKT.usdhkd > 0 ? +MKT.usdhkd : 7.8);
   const px = t => { if (t === "EF") t = "IB01"; return MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN; };
@@ -555,15 +551,15 @@ td.r, th.r { text-align: right; }
   function fillHoldForm() { for (const id in H_IDS) { const inp = $(id); if (document.activeElement !== inp) inp.value = HOLD[H_IDS[id]] ? HOLD[H_IDS[id]] : ""; } }
   function renderBuy() {
     const V = vals();
-    const sp = V.VUAA + V.VOO + V.I500;
-    const sv = V.AVUV + V.AVGS + V.USSC + V.IB01;
+    const sp = V.VUAA + V.VOO;
+    const sv = V.AVUV + V.AVGS + V.IB01;
     const tot = sp + sv, student = ageAt(today()) < S.gradAge;
     const usNow = V.VOO + V.AVUV;
     // Which listing: US funds only while studying AND US-listed holdings are still small; otherwise the Irish funds.
     const useUS = student && usNow < 3000;
     const tgt = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70)) / 100;
     const svSide = tot <= 0 ? tgt >= 0.5 : sv / tot < tgt;
-    const sig = sigOn(), risk = V.AVUV + V.AVGS + V.USSC;
+    const sig = sigOn(), risk = V.AVUV + V.AVGS;
     const filterOn = !student || risk + V.IB01 >= FILTER_MIN;                      // students: only once the fees are worth it
     const parkSV = filterOn && svSide && sig === false;
     const efNeed = student ? 0 : payNow(6 * S.living), efHave = V.EF * fxRate(), efFirst = efHave < efNeed;
@@ -581,7 +577,7 @@ td.r, th.r { text-align: right; }
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…"); }
     const box = $("sides"); box.textContent = "";
     const tg = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70));
-    [[`S&P 500 · target ${100 - tg}%`, sp, "sp", "VUAA + VOO + I500"], [`Small value · target ${tg}%`, sv, "", "AVUV + AVGS + USSC + IB01"]].forEach(([lab, v, cls, sub]) => {
+    [[`S&P 500 · target ${100 - tg}%`, sp, "sp", "VUAA + VOO"], [`Small value · target ${tg}%`, sv, "", "AVUV + AVGS + IB01"]].forEach(([lab, v, cls, sub]) => {
       const row = document.createElement("div"); row.className = "side";
       const l = document.createElement("div"); l.textContent = lab; l.title = sub;
       const tr = document.createElement("div"); tr.className = "track"; const f = document.createElement("div"); f.className = "fill " + cls; f.style.width = (tot > 0 ? v / tot * 100 : 0) + "%"; tr.appendChild(f);
@@ -631,7 +627,7 @@ td.r, th.r { text-align: right; }
     if (!ACT) { box.hidden = true; $("actForm").hidden = true; return; }
     box.hidden = false; box.className = "actbox" + (ACT.kind === "in" ? " in" : "");
     if (ACT.kind === "out") {
-      const sells = ["AVUV", "AVGS", "USSC"].filter(t => V[t] > 1), fees = sells.reduce((a, t) => a + FEE(t), 0) + FEE("IB01") + risk * 0.001;
+      const sells = ["AVUV", "AVGS"].filter(t => V[t] > 1), fees = sells.reduce((a, t) => a + FEE(t), 0) + FEE("IB01") + risk * 0.001;
       ACT.usd = risk - fees;
       $("actHead").textContent = "Signal is OFF · do this now";
       $("actText").textContent = `Sell all your ${sells.join(" and ")} (${usd(risk)}) and buy IB01 with the money. About ${usd2(fees)} in fees. It stays in IB01 until the signal turns back ON.`;
@@ -649,7 +645,7 @@ td.r, th.r { text-align: right; }
   }
   $("actBtn").addEventListener("click", () => {
     if (!ACT) return;
-    const opts = ACT.kind === "out" ? ["IB01"] : [ACT.to, ...["AVUV", "AVGS", "USSC"].filter(t => t !== ACT.to)];
+    const opts = ACT.kind === "out" ? ["IB01"] : [ACT.to, ...["AVUV", "AVGS"].filter(t => t !== ACT.to)];
     $("afFund").textContent = ""; opts.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; $("afFund").appendChild(o); });
     afEstimate(); $("actForm").hidden = false; $("afShares").focus();
   });
@@ -660,7 +656,7 @@ td.r, th.r { text-align: right; }
     const t = $("afFund").value, n = Number($("afShares").value);
     if (!(n > 0) || !ACT) { $("hStatus").textContent = "Enter how many shares you bought."; return; }
     const next = { ...HOLD };
-    if (ACT.kind === "out") { next.AVUV = 0; next.AVGS = 0; next.USSC = 0; next.IB01 = Math.round(((+next.IB01 || 0) + n) * 1e6) / 1e6; }
+    if (ACT.kind === "out") { next.AVUV = 0; next.AVGS = 0; next.IB01 = Math.round(((+next.IB01 || 0) + n) * 1e6) / 1e6; }
     else { next.IB01 = 0; next[t] = Math.round(((+next[t] || 0) + n) * 1e6) / 1e6; }
     const msg = ACT.kind === "out" ? `Moved small value into ${n} IB01` : `Moved IB01 back into ${n} ${t}`;
     HOLD = next; $("actForm").hidden = true; fillHoldForm(); renderBuy();

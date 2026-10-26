@@ -49,7 +49,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$FLIP" = "OFF" ]; then
-            ACTION="Sell your small-value funds (AVUV, AVGS, USSC) and buy IB01. While you're studying, only if your small-value funds are over US\$1,500."
+            ACTION="Sell your small-value funds (AVUV, AVGS) and buy IB01. While you're studying, only if your small-value funds are over US\$1,500."
           else
             ACTION="Sell your parked IB01 and buy back small value (the tracker shows which fund)."
           fi
