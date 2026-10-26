@@ -43,10 +43,11 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 6px; }
 .legend i.dash { border-top-style: dashed; border-color: var(--muted); }
 .legend i.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--fg); }
+.legend i.dots { border-top: 2px dotted var(--fg); }
 .legend i.tgt { border-color: var(--behind); border-top-style: dotted; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); display: none; white-space: nowrap; z-index: 2; }
 .tip b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
-.readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; min-height: 64px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; min-height: 84px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 .readout .h { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
 .readout b { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start; }
@@ -121,14 +122,13 @@ td.r, th.r { text-align: right; }
     <form id="setupForm" autocomplete="off" novalidate>
       <h3 class="full">About you</h3>
       <label for="sDob">Date of birth<input id="sDob" type="date"></label>
-      <label for="sGrad">Age you start full-time work<input id="sGrad" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label for="sGrad">Age you start full-time work<input id="sGrad" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 23"></label>
       <h3 class="full">Saving</h3>
-      <label for="sStudent">Invested a month until then (HK$)<input id="sStudent" type="number" min="0" step="any" inputmode="decimal"></label>
-      <label for="sMonthly">Invested a month after that (HK$)<input id="sMonthly" type="number" min="0" step="any" inputmode="decimal"></label>
-      <label for="sLiving">Living costs a month now (HK$)<input id="sLiving" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label for="sStudent">Invested a month until then (HK$)<input id="sStudent" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 1200"></label>
+      <label for="sMonthly">Invested a month after that (HK$)<input id="sMonthly" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 25000"></label>
+      <label for="sLiving">Living costs a month now (HK$)<input id="sLiving" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 10000"></label>
       <h3 class="full">Retirement</h3>
-      <label for="sIncome">Monthly income you want in retirement (today's HK$)<input id="sIncome" type="number" min="0" step="any" inputmode="decimal"></label>
-      <label for="sSv">Small-value share target (%)<input id="sSv" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label for="sIncome">Monthly income you want in retirement (today's HK$)<input id="sIncome" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 30000"></label>
       <p class="full small" id="sTargetNote"></p>
       <h3 class="full">What you own now (shares in IBKR)</h3>
       <label for="shVUAA">VUAA<input id="shVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVUAA">—</span></label>
@@ -215,7 +215,7 @@ td.r, th.r { text-align: right; }
     <div style="display:flex;flex-direction:column;gap:6px">
       <h2 id="chartTitle">Path to the target</h2>
     </div>
-    <div class="legend"><span><i></i>6% after inflation (likely)</span><span><i class="dash"></i>4% and 8%</span><span><i class="tgt"></i>Target, rising with prices</span><span><i class="dot"></i>Your balance</span></div>
+    <div class="legend"><span><i></i>Plan at 6% after inflation (likely)</span><span><i class="dash"></i>4% and 8%</span><span><i class="tgt"></i>Target, rising with prices</span><span><i class="dot"></i>Your balance</span><span><i class="dots"></i>From your balance now (6%)</span></div>
     <div class="readout" id="chartRead" aria-live="polite"></div>
     <div class="chartbox" id="chart"></div>
     <p class="small muted" id="chartNote"></p>
@@ -239,7 +239,6 @@ td.r, th.r { text-align: right; }
       <label for="pLiving">Living costs a month now (HK$)<input id="pLiving" type="number" min="0" step="any"><span class="hint">Sizes your emergency fund. It doesn't change FI age.</span></label>
       <label for="pIncome">Monthly income wanted in retirement (today's HK$)<input id="pIncome" type="number" min="1" step="any"></label>
       <label for="pStart">Balance when the plan started (HK$)<input id="pStart" type="number" min="0" step="any"></label>
-      <label for="pSv">Small-value share target (%)<input id="pSv" type="number" min="0" max="100" step="any" required><span class="hint">Decides which fund "This month's buy" picks. It doesn't change FI age.</span></label>
     </form>
     <p class="status" id="pStatus" role="status"></p>
     <p class="small muted" id="spendNote"></p>
@@ -263,14 +262,14 @@ td.r, th.r { text-align: right; }
   let checkins = [];
   let db = null, canWrite = true;
   const YR = 365.25 * 864e5;
-  const SWR = 4, RET = 6;             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
+  const SWR = 4, RET = 6, SV = 70;   // 70% small value / 30% S&P 500 is fixed             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
   const futInfl = () => (MKT && MKT.cpi && isFinite(MKT.cpi.avg20) ? MKT.cpi.avg20 : 2.5);   // future inflation = Hong Kong's 20-year average
   function norm(raw) {
     raw = raw || {};
     const s = { ...DEFAULTS, ...raw };
     if (!raw.dob && raw.age != null && raw.ageDate) { const d = new Date(raw.ageDate); d.setFullYear(d.getFullYear() - Math.round(raw.age)); s.dob = d.toISOString().slice(0, 10); }
     if (raw.retireIncome == null && raw.target > 0) s.retireIncome = Math.round(raw.target * (raw.swr || 3.3) / 100 / 12);   // older saves had a fixed target
-    s.swr = SWR; s.realReturn = RET;                                                 // fixed: 4% withdrawals, 6% a year after inflation
+    s.swr = SWR; s.realReturn = RET; s.svShare = SV;                                                 // fixed: 4% withdrawals, 6% a year after inflation
     s.age = (new Date(s.ageDate) - new Date(s.dob)) / YR;
     s.target = s.retireIncome * 12 / (s.swr / 100);
     return s;
@@ -365,6 +364,8 @@ td.r, th.r { text-align: right; }
     const end = Math.max(42, Math.ceil((isFinite(fiHi) ? fiHi : 60) + 1), ...checkins.map(c => Math.ceil(ageAt(c.date) + 1)));
     const lines = [4, S.realReturn, 8].map(r => ({ r, pts: path(S.age, S.startBalance, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
     const realPts = checkins.map(c => [ageAt(c.date), c.balance, c]);
+    const lastCi = checkins.length ? checkins[checkins.length - 1] : null, aL = lastCi ? ageAt(lastCi.date) : null;
+    const fromNow = lastCi ? path(aL, realOf(lastCi), RET, end).map(([a, v]) => [a, v * nomAt(a)]) : null;   // likely path from where you actually are
     const tgtPts = []; for (let a = start; a <= end + 1e-9; a += 1 / 12) tgtPts.push([a, S.target * nomAt(a)]);
     const tgtAt = a => tgtPts[Math.max(0, Math.min(tgtPts.length - 1, Math.round((a - start) * 12)))][1];
     const yMax = Math.max(tgtAt(end) * 1.15, ...realPts.map(p => p[1] * 1.1));
@@ -402,6 +403,7 @@ td.r, th.r { text-align: right; }
     });
     // check-ins
     if (realPts.length > 1) el("path", { d: realPts.map((p, i) => (i ? "L" : "M") + x(p[0]) + "," + y(p[1])).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
+    if (fromNow) el("path", { d: fromNow.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.75, "stroke-dasharray": "1 4", "stroke-linecap": "round", "clip-path": "url(#plotClip)" }, svg);
     realPts.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 4.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
     // scrub: a dot follows your finger (or mouse) along the likely line, with the target at that age
     const rd = $("chartRead");
@@ -420,7 +422,8 @@ td.r, th.r { text-align: right; }
       rd.textContent = "";
       const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
       add(i == null ? "Drag along the chart to see any age" : `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}`, null, "h");
-      add("Likely: ", hk(v)); add("Target: ", hk(tv));
+      add("Plan: ", hk(v)); add("From now: ", fromNow && a >= aL ? hk(fromNow[Math.min(fromNow.length - 1, Math.round((a - aL) * 12))][1]) : "—");
+      add("Target: ", hk(tv));
       const o = lines.filter(L => L !== main); add(`${o[0].r}%: `, hk(o[0].pts[Math.min(o[0].pts.length - 1, i ?? 0)][1]), "muted"); add(`${o[1].r}%: `, hk(o[1].pts[Math.min(o[1].pts.length - 1, i ?? 0)][1]), "muted");
     }
     const nowA = Math.max(start, Math.min(end, ageAt(today()))), nowI = Math.round((nowA - start) * 12);
@@ -503,7 +506,7 @@ td.r, th.r { text-align: right; }
   }
 
   // ---------- forms ----------
-  const F = { pDob: "dob", pPlanStart: "ageDate", pGrad: "gradAge", pStudent: "studentMonthly", pMonthly: "monthly", pLiving: "living", pIncome: "retireIncome", pStart: "startBalance", pSv: "svShare" };
+  const F = { pDob: "dob", pPlanStart: "ageDate", pGrad: "gradAge", pStudent: "studentMonthly", pMonthly: "monthly", pLiving: "living", pIncome: "retireIncome", pStart: "startBalance" };
   function fillPlanForm() { for (const id in F) { const inp = $(id); if (document.activeElement !== inp) inp.value = S[F[id]]; } }
   function readPlanForm() {
     const next = { ...S };
@@ -696,17 +699,17 @@ td.r, th.r { text-align: right; }
   });
 
   // ---------- first-run setup ----------
-  const SF = { sDob: "dob", sGrad: "gradAge", sStudent: "studentMonthly", sMonthly: "monthly", sLiving: "living", sIncome: "retireIncome", sSv: "svShare" };
-  let setupAgain = false;
+  const SF = { sDob: "dob", sGrad: "gradAge", sStudent: "studentMonthly", sMonthly: "monthly", sLiving: "living", sIncome: "retireIncome" };
+  let setupAgain = false, hasSaved = false;
   function readSetup() {
-    const s = { ...S };
-    for (const id in SF) { const v = $(id).value; if (id === "sDob") { if (v) s.dob = v; } else if (v !== "" && isFinite(Number(v))) s[SF[id]] = Number(v); }
+    const s = { ...S }, missing = [];
+    for (const id in SF) { const v = $(id).value; if (v === "" || (id !== "sDob" && !isFinite(Number(v)))) { missing.push(id); s[SF[id]] = undefined; } else s[SF[id]] = id === "sDob" ? v : Number(v); }
     const sh = {}; for (const [t] of Object.entries(HOLD)) sh[t] = Math.max(0, Number($("sh" + t).value || 0));
-    return { s, sh };
+    return { s, sh, missing };
   }
   function setupNotes() {
-    const { s, sh } = readSetup(), n = norm({ ...s, ageDate: today() });
-    $("sTargetNote").textContent = n.retireIncome > 0 && n.swr > 0
+    const { s, sh } = readSetup(), n = norm({ ...s, dob: s.dob || S.dob, ageDate: today() });
+    $("sTargetNote").textContent = s.retireIncome > 0
       ? `You'll need about ${hk(n.target)} in today's money (${hkFull(n.retireIncome)} × 12 ÷ 4%), rising with inflation. ${isFinite(n.age) ? `You're ${n.age.toFixed(1)} today.` : ""}`
       : "Enter a retirement income.";
     const V = vals(sh), tot = planUsd(V);
@@ -715,7 +718,7 @@ td.r, th.r { text-align: right; }
   }
   function openSetup(again) {
     setupAgain = again;
-    for (const id in SF) $(id).value = S[SF[id]] ?? "";
+    for (const id in SF) $(id).value = hasSaved ? (S[SF[id]] ?? "") : "";      // a brand-new user starts with empty boxes
     for (const t in HOLD) $("sh" + t).value = HOLD[t] || "";
     $("setupCancel").hidden = !again; $("sBkWrap").hidden = again;
     $("setupLede").textContent = again ? "Change anything below. Starting again restarts the plan line from today with these holdings; your check-in history is kept."
@@ -728,8 +731,8 @@ td.r, th.r { text-align: right; }
   $("redoSetup").addEventListener("click", () => openSetup(true));
   $("setupForm").addEventListener("submit", async ev => {
     ev.preventDefault();
-    const { s, sh } = readSetup();
-    if (!s.dob) { $("setupStatus").textContent = "Enter your date of birth."; return; }
+    const { s, sh, missing } = readSetup();
+    if (missing.length) { $("setupStatus").textContent = "Fill in every box above (0 is fine where it applies)."; $(missing[0]).focus(); return; }
     if (!(s.retireIncome > 0) || !(s.swr > 0)) { $("setupStatus").textContent = "Enter the monthly income you want in retirement."; return; }
     const V = vals(sh), tot = planUsd(V);
     if (tot > 0 && !MKT) { $("setupStatus").textContent = "Prices are still loading. Wait a moment, then press Start again."; return; }
@@ -793,7 +796,7 @@ td.r, th.r { text-align: right; }
   if (!db.ok()) { $("ciStatus").textContent = "This browser isn't letting the page save data (private mode or blocked storage). Changes will be lost when you close it."; }
   db.doc("plan/settings").onSnapshot(s => {
     if (planTimer) return;
-    S = norm(s.exists ? s.data() : {}); renderAll();
+    hasSaved = s.exists; S = norm(s.exists ? s.data() : {}); renderAll();
     if (!S.setupDone) { if (!document.body.classList.contains("in-setup")) openSetup(false); }
   });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; fillHoldForm(); renderBuy(); } });
