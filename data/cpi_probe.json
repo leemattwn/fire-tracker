@@ -1,10 +1,139 @@
 {
- "csd": {
-  "len": 1636318,
-  "head": "{\n    \"header\": {\n        \"status\": {\n            \"name\": \"Success\",\n            \"code\": 0,\n            \"description\": \"Query success\",\n            \"apiHelp\": \"https:\\/\\/www.censtatd.gov.hk\\/en\\/web_table.html?id=510-60001&api_popup=1\"\n        },\n        \"title\": \"Consumer Price Indices (October 2019 \\u2013 September 2020 = 100)\",\n        \"tablenote\": [\n            \"Four series of Consumer Price Indices (CPIs) are compiled to reflect the impact of consumer price changes on households in different expenditure ranges.     The CPI(A), CPI(B) and CPI(C) are compiled based on the expenditure patterns of households in the relatively low, medium and relatively high expenditure ranges.  By aggregating the expenditure patterns of all households covered by the above three indices, a Composite CPI is also compiled to reflect the impact of consumer price changes on the household sector as a whole.  The year-on-year rate of change in this index is generally taken to reflect overall consumer price inflation.     The CPI(A), CPI(B) and CPI(C) cover some 50%, 30% and 10% of households in Hong Kong respectively.  The average monthly household expenditures of these groups at 2025 prices are broadly equivalent to $7,100 - $29,000, $29,000 - $53,100 and $53,100 - $99,300 respectively, and that of the Composite CPI is broadly equivalent to $7,100 - $99,300.     Percentage changes are derived from rounded indices of more than 1 decimal place.     The year-on-year rates of change before October 202",
-  "tail": " \"period\": \"202606\",\n            \"sv\": \"A_CM_1920\",\n            \"svDesc\": \"Year-on-year % change\",\n            \"figure\": 1.8,\n            \"sd_value\": \"\"\n        },\n        {\n            \"freq\": \"M\",\n            \"period\": \"202607\",\n            \"sv\": \"A_CM_1920\",\n            \"svDesc\": \"Year-on-year % change\",\n            \"figure\": 1.2,\n            \"sd_value\": \"\"\n        },\n        {\n            \"freq\": \"M\",\n            \"period\": \"202608\",\n            \"sv\": \"A_CM_1920\",\n            \"svDesc\": \"Year-on-year % change\",\n            \"figure\": 1.2,\n            \"sd_value\": \"\"\n        },\n        {\n            \"freq\": \"M\",\n            \"period\": \"202609\",\n            \"sv\": \"A_CM_1920\",\n            \"svDesc\": \"Year-on-year % change\",\n            \"figure\": 1.4,\n            \"sd_value\": \"\"\n        }\n    ]\n}"
- },
- "fred": {
-  "error": "The read operation timed out"
+ "top": [
+  "header",
+  "dataSet"
+ ],
+ "header_keys": [
+  "status",
+  "title",
+  "tablenote",
+  "source",
+  "count"
+ ],
+ "record_keys": [
+  "figure",
+  "freq",
+  "period",
+  "sd_value",
+  "sv",
+  "svDesc"
+ ],
+ "combos": {
+  "M|CC_CM_1920|Index": {
+   "n": 627,
+   "last": [
+    "202609",
+    111.2
+   ]
+  },
+  "Y|CC_CM_1920|Index": {
+   "n": 51,
+   "last": null
+  },
+  "M|CC_CM_1920|Month-to-month % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    0.3
+   ]
+  },
+  "M|CC_CM_1920|Year-on-year % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    1.9
+   ]
+  },
+  "Y|CC_CM_1920|Year-on-year % change": {
+   "n": 51,
+   "last": null
+  },
+  "M|B_CM_1920|Index": {
+   "n": 627,
+   "last": [
+    "202609",
+    110
+   ]
+  },
+  "Y|B_CM_1920|Index": {
+   "n": 51,
+   "last": null
+  },
+  "M|B_CM_1920|Month-to-month % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    0.3
+   ]
+  },
+  "M|B_CM_1920|Year-on-year % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    2
+   ]
+  },
+  "Y|B_CM_1920|Year-on-year % change": {
+   "n": 51,
+   "last": null
+  },
+  "M|C_CM_1920|Index": {
+   "n": 627,
+   "last": [
+    "202609",
+    110
+   ]
+  },
+  "Y|C_CM_1920|Index": {
+   "n": 51,
+   "last": null
+  },
+  "M|C_CM_1920|Month-to-month % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    0.4
+   ]
+  },
+  "M|C_CM_1920|Year-on-year % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    2.3
+   ]
+  },
+  "Y|C_CM_1920|Year-on-year % change": {
+   "n": 51,
+   "last": null
+  },
+  "M|A_CM_1920|Index": {
+   "n": 627,
+   "last": [
+    "202609",
+    113.5
+   ]
+  },
+  "Y|A_CM_1920|Index": {
+   "n": 51,
+   "last": null
+  },
+  "M|A_CM_1920|Month-to-month % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    0.2
+   ]
+  },
+  "M|A_CM_1920|Year-on-year % change": {
+   "n": 627,
+   "last": [
+    "202609",
+    1.4
+   ]
+  },
+  "Y|A_CM_1920|Year-on-year % change": {
+   "n": 51,
+   "last": null
+  }
  }
 }
