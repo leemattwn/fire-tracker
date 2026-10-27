@@ -701,7 +701,8 @@ td.r, th.r { text-align: right; }
       const order = over ? ["AVUV", "AVGS"] : (useUS ? ["VOO", "VUAA"] : ["VUAA", "VOO"]);
       let left = move; const sells = [];
       for (const t of order) { if (left <= 1 || V[t] <= 1) continue; const take = Math.min(left, V[t]); sells.push({ t, sh: take >= V[t] - 0.5 ? sh(t) : take / px(t), usd: take }); left -= take; }
-      const to = over ? (useUS ? "VOO" : "VUAA") : (useUS ? "AVUV" : "AVGS");
+      const big = move >= DIRECT_MIN;                                   // like every other trade: London only when the amount is big enough
+      const to = over ? (big ? "VUAA" : "VOO") : (big ? "AVGS" : "AVUV");
       const alt = over ? (to === "VOO" ? "VUAA" : "VOO") : (to === "AVUV" ? "AVGS" : "AVUV");
       return { kind: "rebal", head: `Rebalance: small value is ${(sv / tot * 100).toFixed(0)}%`, note: "Rebalanced",
         text: `It's outside 60–80%, so move about ${usd(move)} back to 70/30: sell ${sells.map(s => `${usd(s.usd)} of ${s.t}`).join(" and ")}, then buy ${to}.`,
