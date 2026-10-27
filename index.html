@@ -522,9 +522,9 @@ td.r, th.r { text-align: right; }
         `Then ${hkFull(S.monthly)} a month in today's money, rising with inflation each year.`,
         "Raise the amount with every pay rise."] },
       { name: "Final approach", when: approach && isFinite(fa) ? `about ${approach.toFixed(0)} to ${fa.toFixed(0)}` : "last 5 years", on: approach && nowAge >= approach && nowAge < fa, items: [
-        "Build 2–3 years of spending in IB01 as a cash buffer.", "Re-check your retirement income."] },
+        "Keep the same plan and keep following the signal: in backtests a cash buffer on top of the filter lowered results.", "Re-check your retirement income."] },
       { name: "Retired", when: isFinite(fa) ? `from about ${fa.toFixed(0)}` : "at the target", on: isFinite(fa) && nowAge >= fa, items: [
-        `Withdraw ${hkFull(S.retireIncome)} a month in today's money (4% a year), raised with inflation.`, "Spend from the buffer after bad years.", "MPF from 65."] },
+        `Withdraw ${hkFull(S.retireIncome)} a month in today's money (4% a year), raised with inflation.`, "Keep following the signal; it's what protects you from a bad first few years.", "MPF from 65."] },
     ];
     const box = $("phases"); box.textContent = "";
     P.forEach(p => {
