@@ -1,7 +1,0 @@
-aqr_mom.xlsx: ok 58269 bytes
-msci_d.json: ok 203 bytes
-msci_m.json: ok 203 bytes
-msci_page.html: ok 1918 bytes
-Developed_ex_US_6_Portfolios_ME_Prior_12_2_Daily.csv: <HTTPError 404: 'Not Found'>
-Developed_6_Portfolios_ME_Prior_12_2_Daily.csv: <HTTPError 404: 'Not Found'>
-25_Portfolios_ME_Prior_12_2_Daily.csv: ok 11020600 bytes
