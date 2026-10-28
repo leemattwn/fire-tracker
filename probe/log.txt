@@ -1,0 +1,6 @@
+6_Portfolios_ME_Prior_12_2_Daily_CSV.zip: ok 592756 bytes
+10_Portfolios_Prior_12_2_Daily_CSV.zip: ok 901149 bytes
+F-F_Momentum_Factor_daily_CSV.zip: ok 85338 bytes
+MTUM: ok 3403 days
+IWMO.L: ok 3049 days
+SPY: ok 8494 days
