@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 OUT = os.path.join(os.path.dirname(__file__), "..", "data", "market.json")
 FUNDS = {  # tracker name -> Yahoo symbol
     "VOO": "VOO", "AVUV": "AVUV", "VUAA": "VUAA.L", "AVGS": "AVGS.L",
-    "IB01": "IB01.L",
+    "IB01": "IB01.L", "IUMO": "IUMO.L", "MTUM": "MTUM",
 }
 UA = {"User-Agent": "Mozilla/5.0 (fire-tracker data job)"}
 

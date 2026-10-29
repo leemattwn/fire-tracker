@@ -10,7 +10,7 @@ A personal FIRE (financial independence) tracker for a 30% S&P 500 / 70% small-v
 - `.github/workflows/update-data.yml` runs every weekday after the US and London closes. It runs `scripts/update_data.py`, which downloads prices from Yahoo Finance and writes `data/market.json`.
 - `data/market.json` holds:
   - **signal**: S&P 500 close, 200-day average, 20-day volatility, and the filter state. ON means the S&P 500 is above its 200-day average and 20-day volatility is under 25%; the state only flips after two closes in a row agree.
-  - **prices** in US$ for VOO, AVUV, VUAA, AVGS and IB01.
+  - **prices** in US$ for IUMO, MTUM, VOO, AVUV, VUAA, AVGS and IB01.
   - **usdhkd**: the USD/HKD rate used to convert check-ins.
 
 To refresh the data by hand: Actions tab → "Update market data" → Run workflow.

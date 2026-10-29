@@ -140,8 +140,10 @@ td.r, th.r { text-align: right; }
       <label for="sIncome">Monthly income you want in retirement (today's HK$)<input id="sIncome" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 30000"></label>
       <p class="full small" id="sTargetNote"></p>
       <h3 class="full">What you own now (shares in IBKR)</h3>
-      <label for="shVUAA">VUAA<input id="shVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVUAA">—</span></label>
-      <label for="shVOO">VOO<input id="shVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVOO">—</span></label>
+      <label for="shIUMO">IUMO<input id="shIUMO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvIUMO">—</span></label>
+      <label for="shMTUM">MTUM<input id="shMTUM" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvMTUM">—</span></label>
+      <label for="shVUAA">VUAA, already owned<input id="shVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVUAA">—</span></label>
+      <label for="shVOO">VOO, already owned<input id="shVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvVOO">—</span></label>
       <label for="shAVUV">AVUV<input id="shAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvAVUV">—</span></label>
       <label for="shAVGS">AVGS<input id="shAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvAVGS">—</span></label>
       <label for="shIB01">IB01, parked<input id="shIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="shvIB01">—</span></label>
@@ -192,7 +194,7 @@ td.r, th.r { text-align: right; }
       <div class="sides" id="sides"></div>
     </div>
     <form id="boughtForm" class="boughtform" autocomplete="off" hidden>
-      <label for="bfFund">Fund<select id="bfFund"><option value="VUAA">VUAA</option><option value="VOO">VOO</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="IB01">IB01 (parked, signal off)</option><option value="CASH">Cash waiting (US$)</option><option value="EF">Emergency fund (HK$)</option></select></label>
+      <label for="bfFund">Fund<select id="bfFund"><option value="IUMO">IUMO</option><option value="MTUM">MTUM</option><option value="AVUV">AVUV</option><option value="AVGS">AVGS</option><option value="IB01">IB01 (parked, signal off)</option><option value="CASH">Cash waiting (US$)</option><option value="EF">Emergency fund (HK$)</option><option value="VUAA">VUAA</option><option value="VOO">VOO</option></select></label>
       <label for="bfShares"><span id="bfUnit">Shares bought</span><input id="bfShares" type="number" min="0" step="any" inputmode="decimal"></label>
       <p class="full hint" id="bfHint"></p>
       <div class="btnrow"><button type="submit">Add to my holdings</button><button type="button" class="ghost" id="bfCancel">Cancel</button></div>
@@ -201,8 +203,10 @@ td.r, th.r { text-align: right; }
     <details id="holdBox">
       <summary>Your holdings (shares): tap to correct</summary>
       <form id="hForm" autocomplete="off" style="margin-top:12px">
-        <label for="hVUAA">VUAA<input id="hVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVUAA">—</span></label>
-        <label for="hVOO">VOO<input id="hVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVOO">—</span></label>
+        <label for="hIUMO">IUMO<input id="hIUMO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIUMO">—</span></label>
+        <label for="hMTUM">MTUM<input id="hMTUM" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vMTUM">—</span></label>
+        <label for="hVUAA">VUAA, already owned<input id="hVUAA" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVUAA">—</span></label>
+        <label for="hVOO">VOO, already owned<input id="hVOO" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vVOO">—</span></label>
         <label for="hAVUV">AVUV<input id="hAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVUV">—</span></label>
         <label for="hAVGS">AVGS<input id="hAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVGS">—</span></label>
         <label for="hIB01">IB01, parked<input id="hIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIB01">—</span></label>
@@ -272,7 +276,7 @@ td.r, th.r { text-align: right; }
   let checkins = [];
   let db = null, canWrite = true;
   const YR = 365.25 * 864e5;
-  const SWR = 4, RET = 6, SV = 70;   // 70% small value / 30% S&P 500 is fixed             // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
+  const SWR = 4, RET = 6, SV = 70;   // 70% small value / 30% large caps (IUMO momentum; VUAA/VOO already owned are kept) is fixed            // withdrawal rate and likely return after inflation for a 70/30 small-value/S&P mix with the filter
   const futInfl = () => (MKT && MKT.cpi && isFinite(MKT.cpi.avg20) ? MKT.cpi.avg20 : 2.5);   // future inflation = Hong Kong's 20-year average
   function norm(raw) {
     raw = raw || {};
@@ -514,7 +518,7 @@ td.r, th.r { text-align: right; }
     const P = [
       { name: "Studying", when: `now to ${S.gradAge}`, on: nowAge < S.gradAge, items: [
         `${hkFull(payNow(S.studentMonthly))} a month into the fund shown above, rising with inflation each year.`,
-        "Once AVUV + VOO pass US$3,000, move them to AVGS and VUAA (the tracker asks).",
+        "Once your US-listed funds (MTUM, AVUV, any VOO) pass US$3,000, move them to IUMO and AVGS (the tracker asks).",
         "The signal filter starts once your small-value funds pass US$1,500.",
         "Protect your grades first."] },
       { name: "Building", when: approach ? `${S.gradAge} to about ${approach.toFixed(0)}` : `from ${S.gradAge}`, on: nowAge >= S.gradAge && (!approach || nowAge < approach), items: [
@@ -579,8 +583,12 @@ td.r, th.r { text-align: right; }
     await savePlan(next);
   });
   // ---------- holdings and this month's buy ----------
-  const H_IDS = { hVUAA: "VUAA", hVOO: "VOO", hAVUV: "AVUV", hAVGS: "AVGS", hIB01: "IB01", hCASH: "CASH", hEF: "EF" };
-  let HOLD = { VUAA: 0, VOO: 0, AVUV: 0, AVGS: 0, IB01: 0, CASH: 0, EF: 0 };   // fund shares; CASH = US$ waiting while the signal is OFF; EF = emergency fund in HK$ (outside the plan)
+  const H_IDS = { hIUMO: "IUMO", hMTUM: "MTUM", hVUAA: "VUAA", hVOO: "VOO", hAVUV: "AVUV", hAVGS: "AVGS", hIB01: "IB01", hCASH: "CASH", hEF: "EF" };
+  let HOLD = { IUMO: 0, MTUM: 0, VUAA: 0, VOO: 0, AVUV: 0, AVGS: 0, IB01: 0, CASH: 0, EF: 0 };
+  // The 30% side: new money goes to IUMO (MTUM for small buys). VUAA/VOO bought before the switch are kept, not sold;
+  // they count toward the 30% and are the first sold whenever money has to come out of that side.
+  const LC = ["VUAA", "VOO", "MTUM", "IUMO"], US_LISTED = ["MTUM", "VOO", "AVUV"];
+  const sumOf = (V, ts) => ts.reduce((a, t) => a + (V[t] || 0), 0);   // fund shares; CASH = US$ waiting while the signal is OFF; EF = emergency fund in HK$ (outside the plan)
   let MKT = null;                                                                    // data/market.json
   const fxRate = () => (MKT && +MKT.usdhkd > 0 ? +MKT.usdhkd : 7.8);
   const px = t => { if (t === "CASH") return 1; if (t === "EF") return 1 / fxRate(); return MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN; };
@@ -597,12 +605,12 @@ td.r, th.r { text-align: right; }
   function fillHoldForm() { for (const id in H_IDS) { const inp = $(id); if (document.activeElement !== inp) inp.value = HOLD[H_IDS[id]] ? HOLD[H_IDS[id]] : ""; } }
   function renderBuy() {
     const V = vals();
-    const sp = V.VUAA + V.VOO;
+    const sp = sumOf(V, LC);
     const sv = V.AVUV + V.AVGS + V.IB01 + V.CASH;
     const tot = sp + sv, student = ageAt(today()) < S.gradAge;
-    const usNow = V.VOO + V.AVUV;
+    const usNow = sumOf(V, US_LISTED);
     // Which listing depends on the size of this month's buy. London trades cost US$1.70 against US$0.35 in New York,
-    // so small buys go to VOO/AVUV and are moved to the Irish funds in one go once they pass US$3,000.
+    // so small buys go to MTUM/AVUV and are moved to the Irish funds in one go once they pass US$3,000.
     const monthUsd = payNow(contribAt(ageAt(today()))) / fxRate(), useUS = monthUsd < DIRECT_MIN;
     const tgt = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70)) / 100;
     const svSide = tot <= 0 ? tgt >= 0.5 : sv / tot < tgt;
@@ -617,11 +625,11 @@ td.r, th.r { text-align: right; }
     const parkSV = filterOn && svSide && sig === false;
     const efNeed = student ? 0 : payNow(6 * S.living), efHave = +HOLD.EF || 0, efFirst = efHave < efNeed;
     const park = useUS ? "CASH" : "IB01";                                           // small amounts wait as cash: an IB01 trade would cost too much
-    const code = efFirst ? "EF" : parkSV ? park : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "VOO" : "VUAA");
+    const code = efFirst ? "EF" : parkSV ? park : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "MTUM" : "IUMO");
     const T = Math.round(tgt * 100);
     const why = efFirst ? `Emergency fund first: ${hk(efHave)} of ${hk(efNeed)} (6 months of living costs). Keep it in a savings account, or IB01 once it's large; it sits outside the plan.`
       : (tot <= 0 ? `Start with the bigger side of your ${T}/${100 - T} split.`
-         : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of the plan; target ${T}%.` : `S&P 500 is ${(sp / tot * 100).toFixed(0)}% of the plan; target ${100 - T}%.`)
+         : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of the plan; target ${T}%.` : `Large caps (IUMO side) are ${(sp / tot * 100).toFixed(0)}% of the plan; target ${100 - T}%.`)
         + (parkSV ? (useUS ? " Signal is OFF: keep this month's money as US$ cash in IBKR; it goes into small value when the signal is back ON." : " Signal is OFF: park it in IB01.")
            : useUS ? ` ${usd(monthUsd)} is a small buy, so use the US-listed fund (US$0.35 a trade, not US$1.70).` : ` ${usd(monthUsd)} is big enough to buy the Irish fund directly.`);
     $("buyFund").textContent = code === "EF" ? "Savings" : code === "CASH" ? "Cash" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
@@ -631,14 +639,14 @@ td.r, th.r { text-align: right; }
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = holdHint(t, V); }
     const box = $("sides"); box.textContent = "";
     const tg = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70));
-    [[`S&P 500 · target ${100 - tg}%`, sp, "sp", "VUAA + VOO"], [`Small value · target ${tg}%`, sv, "", "AVUV + AVGS + IB01"]].forEach(([lab, v, cls, sub]) => {
+    [[`Large caps · target ${100 - tg}%`, sp, "sp", "IUMO + MTUM, plus VUAA and VOO already owned"], [`Small value · target ${tg}%`, sv, "", "AVUV + AVGS + IB01"]].forEach(([lab, v, cls, sub]) => {
       const row = document.createElement("div"); row.className = "side";
       const l = document.createElement("div"); l.textContent = lab; l.title = sub;
       const tr = document.createElement("div"); tr.className = "track"; const f = document.createElement("div"); f.className = "fill " + cls; f.style.width = (tot > 0 ? v / tot * 100 : 0) + "%"; tr.appendChild(f);
       const a = document.createElement("div"); a.className = "amt"; a.textContent = `${usd(v)} · ${tot > 0 ? (v / tot * 100).toFixed(0) : 0}%`;
       row.append(l, tr, a); box.appendChild(row);
     });
-    const us = V.VOO + V.AVUV, note = $("usNote");
+    const us = sumOf(V, US_LISTED), note = $("usNote");
     note.className = "small " + (us > 50000 ? "warn" : "muted");
     const miss = missingPx();
     note.textContent = (miss.length ? `No price today for ${miss.join(", ")}. ` : "")
@@ -690,20 +698,22 @@ td.r, th.r { text-align: right; }
         sells: parts.map(p => p.t === "CASH" ? { ...p, sh: p.usd } : p), buys: [{ opts: [to, to === "AVUV" ? "AVGS" : "AVUV"], usd: amt }] };
     }
     if (usNow > US_MOVE) {
-      const sells = allOf(["VOO", "AVUV"]);
+      const sells = allOf(US_LISTED), dest = t => (t === "AVUV" ? "AVGS" : "IUMO");   // MTUM and any VOO go to IUMO, AVUV to AVGS
+      const buys = ["IUMO", "AVGS"].map(d => ({ opts: [d], usd: sells.filter(s => dest(s.t) === d).reduce((a, s) => a + s.usd, 0) })).filter(b => b.usd > 1);
+      const names = sells.map(s => s.t), list = n => n.length > 1 ? n.slice(0, -1).join(", ") + " and " + n[n.length - 1] : n[0];
       return { kind: "move", head: "Move US-listed funds to Irish ones", note: "Moved US-listed funds to Irish funds",
-        text: `Your VOO and AVUV are ${usd(usNow)}. Sell ${sells.map(s => s.t).join(" and ")}, then buy ${sells.map(s => s.t === "VOO" ? "VUAA" : "AVGS").join(" and ")} with the money: lower dividend tax and no US estate tax.`,
-        sells, buys: sells.map(s => ({ opts: [s.t === "VOO" ? "VUAA" : "AVGS"], usd: s.usd })) };
+        text: `Your ${list(names)} ${names.length > 1 ? "are" : "is"} ${usd(usNow)}. Sell ${list(names)}, then buy ${list(buys.map(b => b.opts[0]))} with the money: lower dividend tax and no US estate tax.`,
+        sells, buys };
     }
     const canRebal = tot > 0 && !(filterOn && sig === false);
     if (canRebal && Math.abs(sv / tot - SV / 100) > BAND) {
       const over = sv / tot > SV / 100, move = Math.abs(sv - SV / 100 * tot);
-      const order = over ? ["AVUV", "AVGS"] : (useUS ? ["VOO", "VUAA"] : ["VUAA", "VOO"]);
+      const order = over ? ["AVUV", "AVGS"] : LC;                         // large-cap side: VUAA and VOO (kept from before) are sold first
       let left = move; const sells = [];
       for (const t of order) { if (left <= 1 || V[t] <= 1) continue; const take = Math.min(left, V[t]); sells.push({ t, sh: take >= V[t] - 0.5 ? sh(t) : take / px(t), usd: take }); left -= take; }
       const big = move >= DIRECT_MIN;                                   // like every other trade: London only when the amount is big enough
-      const to = over ? (big ? "VUAA" : "VOO") : (big ? "AVGS" : "AVUV");
-      const alt = over ? (to === "VOO" ? "VUAA" : "VOO") : (to === "AVUV" ? "AVGS" : "AVUV");
+      const to = over ? (big ? "IUMO" : "MTUM") : (big ? "AVGS" : "AVUV");
+      const alt = over ? (to === "MTUM" ? "IUMO" : "MTUM") : (to === "AVUV" ? "AVGS" : "AVUV");
       return { kind: "rebal", head: `Rebalance: small value is ${(sv / tot * 100).toFixed(0)}%`, note: "Rebalanced",
         text: `It's outside 60–80%, so move about ${usd(move)} back to 70/30: sell ${sells.map(s => `${usd(s.usd)} of ${s.t}`).join(" and ")}, then buy ${to}.`,
         sells, buys: [{ opts: [to, alt], usd: move }] };
@@ -728,8 +738,9 @@ td.r, th.r { text-align: right; }
     } else item("wait", "Split: no holdings yet.");
     if (!filterOn) item("wait", `Signal filter: starts once your small-value funds pass ${usd(FILTER_MIN)} (now ${usd(risk + V.IB01 + V.CASH)}). Until then, ignore the signal.`);
     else item(sig === false ? "warn" : "ok", `Signal filter: on${S.filterStarted ? ` since ${S.filterStarted}` : ""}. The signal is ${sig === null ? "loading" : sig ? "ON, so hold small value" : "OFF, so small value waits in IB01"}.`);
-    if (usNow > US_MOVE) item("warn", `US-listed funds: ${usd(usNow)}, over ${usd(US_MOVE)}. Move them to VUAA and AVGS (see above).`);
-    else if (usNow > 1 || c.useUS) item("ok", `US-listed funds: ${usd(usNow)}. Small monthly buys go to VOO and AVUV (cheaper trades); once they pass ${usd(US_MOVE)}, you'll be asked to move them to VUAA and AVGS.`);
+    if (usNow > US_MOVE) item("warn", `US-listed funds: ${usd(usNow)}, over ${usd(US_MOVE)}. Move them to IUMO and AVGS (see above).`);
+    else if (usNow > 1 || c.useUS) item("ok", `US-listed funds: ${usd(usNow)}. Small monthly buys go to MTUM and AVUV (cheaper trades); once they pass ${usd(US_MOVE)}, you'll be asked to move them to IUMO and AVGS.`);
+    if (V.VUAA + V.VOO > 1) item("ok", `VUAA/VOO you already own (${usd(V.VUAA + V.VOO)}) stay put and count toward the 30%. New money for that side goes to IUMO.`);
     item("ok", "GitHub emails you when the signal flips, and a reminder before each month's buy on the 15th.");
   }
   function taRow(kind, i, t, opts, shares) {
@@ -762,7 +773,7 @@ td.r, th.r { text-align: right; }
   });
 
   // ---------- "I bought it" ----------
-  const FEE = t => (t === "VOO" || t === "AVUV" ? 0.35 : t === "CASH" || t === "EF" ? 0 : 1.70);
+  const FEE = t => (t === "VOO" || t === "AVUV" || t === "MTUM" ? 0.35 : t === "CASH" || t === "EF" ? 0 : 1.70);
   const fname = t => (t === "EF" ? "HK$ to your emergency fund" : t === "CASH" ? "US$ cash waiting" : t);
   function bfEstimate() {
     const tt = $("bfFund").value; $("bfUnit").textContent = tt === "EF" ? "HK$ added" : tt === "CASH" ? "US$ kept as cash" : "Shares bought";
