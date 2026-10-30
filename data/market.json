@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-30T09:10:25+00:00",
+ "updated": "2026-10-30T10:05:22+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
@@ -8,9 +8,9 @@
   "close": 7720.39,
   "sma150": 7466.88,
   "sp_above": true,
-  "avgs_close": 28.685,
-  "avgs_sma150": 28.3038,
-  "avgs_date": "2026-10-28",
+  "avgs_close": 28.96,
+  "avgs_sma150": 28.326,
+  "avgs_date": "2026-10-29",
   "avgs_above": true,
   "raw": true,
   "on": true,
@@ -37,34 +37,34 @@
   "VUAA": {
    "symbol": "VUAA.L",
    "currency": "USD",
-   "price": 148.22,
-   "usd": 148.22,
+   "price": 148.02,
+   "usd": 148.02,
    "date": "2026-10-30",
-   "time": "2026-10-30T08:54+00:00"
+   "time": "2026-10-30T09:49+00:00"
   },
   "AVGS": {
    "symbol": "AVGS.L",
    "currency": "USD",
-   "price": 28.976,
-   "usd": 28.976,
+   "price": 28.935,
+   "usd": 28.935,
    "date": "2026-10-30",
-   "time": "2026-10-30T08:51+00:00"
+   "time": "2026-10-30T09:37+00:00"
   },
   "IB01": {
    "symbol": "IB01.L",
    "currency": "USD",
-   "price": 122.446,
-   "usd": 122.446,
+   "price": 122.44,
+   "usd": 122.44,
    "date": "2026-10-30",
-   "time": "2026-10-30T08:54+00:00"
+   "time": "2026-10-30T09:49+00:00"
   },
   "IUMO": {
    "symbol": "IUMO.L",
    "currency": "USD",
-   "price": 20.08,
-   "usd": 20.08,
+   "price": 20.085,
+   "usd": 20.085,
    "date": "2026-10-30",
-   "time": "2026-10-30T08:45+00:00"
+   "time": "2026-10-30T09:12+00:00"
   },
   "MTUM": {
    "symbol": "MTUM",
@@ -75,7 +75,7 @@
    "time": "2026-10-29T20:00+00:00"
   }
  },
- "usdhkd": 7.8456,
+ "usdhkd": 7.8447,
  "cpi": {
   "latest": "2026-09",
   "yoy": 1.9,
