@@ -166,7 +166,7 @@ td.r, th.r { text-align: right; }
     <div class="sighead"><h2 id="sigTitle">Market signal</h2><span class="sigbadge" id="sigBadge">loading…</span></div>
     <p class="small" id="sigText">Loading today's market data…</p>
     <p class="small muted" id="sigMeta"></p>
-    <p class="small muted">ON = S&amp;P 500 above its 200-day average and volatility under 25%, two closes in a row. When it turns OFF, the tracker tells you to move your small-value funds into IB01, and back when it's ON again. GitHub emails you when it flips.</p>
+    <p class="small muted">ON while the S&amp;P 500 or AVGS is above its own 150-day average. It turns OFF only when both are below, two closes in a row, and back ON when either is above again for two closes. When it turns OFF, the tracker tells you to move your small-value funds into IB01, and back when it's ON again. GitHub emails you when it flips.</p>
   </section>
 
   <section class="panel" aria-labelledby="buyTitle">
@@ -853,9 +853,11 @@ td.r, th.r { text-align: right; }
     const b = $("sigBadge"), sg = MKT && MKT.signal;
     if (!sg) { b.className = "sigbadge"; b.textContent = "no data"; $("sigText").textContent = MKT ? "The S&P 500 data didn't load in the last update." : "Couldn't load market data. Check your connection and reload."; $("sigMeta").textContent = ""; return; }
     b.className = "sigbadge " + (sg.on ? "on" : "off"); b.textContent = sg.on ? "Signal ON" : "Signal OFF";
-    const pct = (sg.close / sg.sma200 - 1) * 100;
-    $("sigText").textContent = `S&P 500 ${Math.abs(pct).toFixed(1)}% ${pct >= 0 ? "above" : "below"} its 200-day average · volatility ${(sg.vol20 * 100).toFixed(1)}% (limit 25%) · `
-      + (sg.pending ? `flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`);
+    const rel = (c, m) => { const p = (c / m - 1) * 100; return `${Math.abs(p).toFixed(1)}% ${p >= 0 ? "above" : "below"}`; };
+    const state = sg.pending ? `flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`;
+    $("sigText").textContent = sg.sma150 && sg.avgs_sma150
+      ? `S&P 500 ${rel(sg.close, sg.sma150)} its 150-day average · AVGS ${rel(sg.avgs_close, sg.avgs_sma150)} its 150-day average · ${state}`
+      : `Signal ${sg.on ? "ON" : "OFF"} · ${state}`;                                  // older data file, until the next update
     const age = (Date.now() - new Date(MKT.updated)) / 864e5;
     const hkt = iso => new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Hong_Kong", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     const pt = Object.values(MKT.prices || {}).map(p => p.time).filter(Boolean).sort().pop();

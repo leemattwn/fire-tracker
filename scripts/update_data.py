@@ -1,8 +1,8 @@
-"""Fetch daily prices, compute the S&P 500 filter signal, write data/market.json.
+"""Fetch daily prices, compute the small-value filter signal, write data/market.json.
 
-Signal (same rule as the backtests): S&P 500 closes above its 200-day average AND its
-20-day volatility (std of daily % changes x sqrt(252)) is under 25%. The state only
-flips after the new condition has held for 2 closes in a row.
+Signal (same rule as the backtests): ON while the S&P 500 OR AVGS (global small value) closes above
+its own 150-day average; OFF only when BOTH are below. The state only flips after the new condition
+has held for 2 closes in a row. No volatility rule.
 Standard library only, so the GitHub Action needs no installs."""
 import json, math, os, sys, time, urllib.request, urllib.parse
 from datetime import datetime, timezone
@@ -61,30 +61,44 @@ def backup_spx():
     raise RuntimeError(f"backup source: {last}")
 
 
-def signal(rows):
-    closes = [c for _, c in rows]
-    out = []
-    for i in range(len(closes)):
-        if i < 200:
-            out.append(None); continue
-        sma = sum(closes[i - 199:i + 1]) / 200
-        rets = [closes[j] / closes[j - 1] - 1 for j in range(i - 19, i + 1)]
-        m = sum(rets) / 20
-        vol = math.sqrt(sum((x - m) ** 2 for x in rets) / 19) * math.sqrt(252)
-        out.append((sma, vol, closes[i] > sma and vol < 0.25))
+MA = 150   # days in each moving average
+
+
+def sma_series(rows, n=MA):
+    """{date: (close, n-day average)} for every row that has n closes behind it."""
+    closes = [c for _, c in rows]; out = {}; run = sum(closes[:n - 1]) if len(closes) >= n else 0
+    for i in range(n - 1, len(closes)):
+        run += closes[i]
+        out[rows[i][0]] = (closes[i], run / n)
+        run -= closes[i - n + 1]
+    return out
+
+
+def signal(sp_rows, sv_rows):
+    """sp_rows / sv_rows: finished daily closes of the S&P 500 and AVGS. Evaluated on S&P 500 trading days,
+    using the latest AVGS close on or before each day (London closes before New York)."""
+    sp, sv = sma_series(sp_rows), sma_series(sv_rows)
+    sv_dates = sorted(sv); j = -1
+    days = []
+    for d, _ in sp_rows:
+        if d not in sp: continue
+        while j + 1 < len(sv_dates) and sv_dates[j + 1] <= d: j += 1
+        if j < 0: continue
+        days.append((d, sp[d], sv[sv_dates[j]], sv_dates[j]))
+    if len(days) < 3: raise RuntimeError(f"only {len(days)} days with both averages")
     state = since = None; streak = 0
-    for i, o in enumerate(out):
-        if o is None: continue
-        raw = o[2]
+    for d, (spc, spm), (svc, svm), _ in days:
+        raw = spc > spm or svc > svm
         if state is None:
-            state, since = raw, rows[i][0]; continue
+            state, since = raw, d; continue
         streak = streak + 1 if raw != state else 0
         if streak >= 2:
-            state, since, streak = raw, rows[i][0], 0
-    sma, vol, raw = out[-1]
-    return dict(date=rows[-1][0], close=round(closes[-1], 2), sma200=round(sma, 2), vol20=round(vol, 4),
-                above=closes[-1] > sma, calm=vol < 0.25, raw=raw, on=state, since=since,
-                pending=(raw != state))
+            state, since, streak = raw, d, 0
+    d, (spc, spm), (svc, svm), svd = days[-1]
+    raw = spc > spm or svc > svm
+    return dict(rule="sp_or_avgs_150", date=d, close=round(spc, 2), sma150=round(spm, 2), sp_above=spc > spm,
+                avgs_close=round(svc, 4), avgs_sma150=round(svm, 4), avgs_date=svd, avgs_above=svc > svm,
+                raw=raw, on=state, since=since, pending=(raw != state))
 
 
 def hk_cpi():
@@ -133,9 +147,10 @@ def main():
         except Exception as e:
             data["errors"].append(f"S&P 500 (Yahoo): {e}; using the backup source")
             rows = backup_spx(); data["signal_source"] = "cnbc"
-        data["signal"] = signal(rows)
+        _, sv_rows = yahoo(FUNDS["AVGS"], closed_only=True)
+        data["signal"] = signal(rows, sv_rows)
     except Exception as e:
-        data["errors"].append(f"S&P 500: {e}")
+        data["errors"].append(f"Signal (S&P 500 / AVGS): {e}")
         if "signal" in old: data["signal"] = old["signal"]
         data["signal_stale"] = True
 
@@ -166,7 +181,8 @@ def main():
     if isinstance(was, bool) and isinstance(now, bool) and was != now:
         sg = data["signal"]
         alert = {"flip": "ON" if now else "OFF", "date": sg["date"], "sent": False,
-                 "detail": f"S&P 500 {sg['close']:,} vs 200-day average {sg['sma200']:,}; 20-day volatility {sg['vol20'] * 100:.1f}%"}
+                 "detail": f"S&P 500 {sg['close']:,} vs its 150-day average {sg['sma150']:,} ({'above' if sg['sp_above'] else 'below'}); "
+                           f"AVGS {sg['avgs_close']:,} vs its 150-day average {sg['avgs_sma150']:,} ({'above' if sg['avgs_above'] else 'below'})"}
     if alert: data["alert"] = alert
     stale_days = (datetime.now(timezone.utc) - datetime.fromisoformat(data["signal"]["date"]).replace(tzinfo=timezone.utc)).days if data.get("signal") else 99
     if os.environ.get("GITHUB_OUTPUT"):

@@ -45,10 +45,10 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
           if [ "$FLIP" = "OFF" ]; then
-            ACTION="Sell your small-value funds (AVUV, AVGS) and buy IB01, if they total over US\$1,500. The tracker's To do box shows the exact trades."
+            ACTION="Both the S&P 500 and AVGS closed below their 150-day averages. Sell your small-value funds (AVUV, AVGS) and buy IB01, if they total over US\$1,500. The tracker's To do box shows the exact trades."
             TAGS=chart_with_downwards_trend
           else
-            ACTION="Sell your parked IB01 and buy back small value (the tracker shows which fund)."
+            ACTION="The S&P 500 or AVGS is back above its 150-day average. Sell your parked IB01 and buy back small value (the tracker shows which fund)."
             TAGS=chart_with_upwards_trend
           fi
           printf '@%s The market signal turned **%s** at the close on %s.\n\n%s\n\n**What to do:** %s\n\nOpen the tracker: %s\n' \
@@ -64,7 +64,7 @@ jobs:
           SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          printf 'The S&P 500 data used for the signal is %s days old, so a signal change could be missed. Check the Actions tab; until it recovers, check the S&P 500 against its 200-day average yourself.\n' "$DAYS" > body.md
+          printf 'The S&P 500 data used for the signal is %s days old, so a signal change could be missed. Check the Actions tab; until it recovers, check the S&P 500 and AVGS against their 150-day averages yourself (OFF only when both are below).\n' "$DAYS" > body.md
           bash scripts/notify.sh "Tracker: market data is $DAYS days old" "The signal can't update until this is fixed. Check the Actions tab on GitHub." high warning "Market data is $DAYS days old" body.md
       - name: Commit data
         if: always() && steps.data.outcome == 'success'
