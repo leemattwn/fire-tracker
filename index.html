@@ -87,6 +87,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
 .tablewrap { overflow-x: auto; max-width: 100%; }
 #ciList { min-width: 0; max-width: 100%; }
+#ciList table { font-size: 13px; } #ciList td, #ciList th { padding: 7px 5px; } #ciList td:last-child { width: 1%; white-space: nowrap; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
@@ -216,22 +217,21 @@ td.r, th.r { text-align: right; }
     <p class="small muted" id="usNote"></p>
   </section>
 
-  <section class="panel" aria-labelledby="ciTitle">
-    <h2 id="ciTitle">History</h2>
-    <p class="small muted">Every buy, signal switch and rebalance on the day it happened, with your balance right after. Your balance over time is in the chart below.</p>
-    <p class="status" id="ciStatus" role="status"></p>
-    <div id="ciList"><div class="empty">Nothing logged yet. Each buy, signal switch and rebalance appears here.</div></div>
-  </section>
-
   <section class="panel" aria-labelledby="chartTitle">
     <div style="display:flex;flex-direction:column;gap:6px">
-      <h2 id="chartTitle">Your balance and where it's heading</h2>
+      <h2 id="chartTitle">Your balance: so far and ahead</h2>
+      <p class="small muted">Left of “now” is your real balance; right of it is the projection.</p>
     </div>
-    <div class="legend"><span><i></i>Likely from your balance now (6%)</span><span><i class="dash"></i>Bad (4%) and good (8%)</span><span><i class="dot"></i>Your balance</span><span><i class="fi"></i>Reaching your target (FI)</span></div>
-    <div class="seg" role="tablist" aria-label="Chart view"><button type="button" role="tab" id="vProj" aria-selected="true">Projection</button><button type="button" role="tab" id="vHist" aria-selected="false">Your history</button></div>
+    <div class="legend"><span><i class="dot"></i>Your balance so far</span><span><i></i>Likely ahead (6%)</span><span><i class="dash"></i>Bad (4%) and good (8%)</span><span><i class="fi"></i>Reaching your target (FI)</span></div>
     <div class="readout" id="chartRead" aria-live="polite"></div>
     <div class="chartbox" id="chart"></div>
     <p class="small muted" id="chartNote"></p>
+    <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
+      <h3 id="ciTitle">What happened</h3>
+      <p class="small muted">Every buy, signal switch and rebalance on the day it happened, with your balance right after.</p>
+      <p class="status" id="ciStatus" role="status"></p>
+      <div id="ciList"><div class="empty">Nothing logged yet. Each buy, signal switch and rebalance appears here.</div></div>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="phTitle">
@@ -381,12 +381,8 @@ td.r, th.r { text-align: right; }
   // ---------- chart ----------
   const NS = "http://www.w3.org/2000/svg";
   function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
-  let VIEW = "proj";
-  try { if (localStorage.getItem("chartView") === "hist") VIEW = "hist"; } catch (e) {}
-  function setView(v) { VIEW = v; try { localStorage.setItem("chartView", v); } catch (e) {} $("vProj").setAttribute("aria-selected", v === "proj"); $("vHist").setAttribute("aria-selected", v === "hist"); renderChart(); }
+  // One chart: before "now" it's your recorded balance (one point a month), after "now" the projection from it.
   function renderChart() {
-    const HIST = VIEW === "hist";
-    document.querySelector("#chartTitle").closest("section").querySelector(".legend").hidden = HIST; $("chartNote").hidden = HIST;
     const box = $("chart"); box.querySelectorAll("svg").forEach(s => s.remove());
     const W = Math.max(300, box.clientWidth), H = 340, m = { l: 64, r: 16, t: 14, b: 34 };
     const last = checkins.length ? checkins[checkins.length - 1] : null;
@@ -396,10 +392,7 @@ td.r, th.r { text-align: right; }
     const fan = [4, RET, 8].map(r => ({ r, pts: path(a0, b0, r, end).map(([a, v]) => [a, v * nomAt(a)]) }));
     const pastPts = checkins.map(c => [ageAt(c.date), c.balance, c.date, true]);   // one point a month: your monthly check-ins
     const main = fan[1], hist = checkins.map(c => [ageAt(c.date), c.balance]);
-    if (HIST) {                                        // history view: just your recorded balances, first record to today
-      start = pastPts.length ? pastPts[0][0] : a0; end = Math.max(start + 1 / 12, pastPts.length ? pastPts[pastPts.length - 1][0] : a0);
-    }
-    const yMax = HIST ? Math.max(...pastPts.map(p => p[1] * 1.1), 1) : Math.max(main.pts[main.pts.length - 1][1] * 1.05, ...pastPts.map(p => p[1] * 1.1), 1);
+    const yMax = Math.max(main.pts[main.pts.length - 1][1] * 1.05, ...pastPts.map(p => p[1] * 1.1), 1);
     const x = a => m.l + (a - start) / (end - start) * (W - m.l - m.r);
     const y = v => H - m.b - v / yMax * (H - m.t - m.b);
     const svg = el("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Your balance and where it's heading" }, null);
@@ -411,23 +404,18 @@ td.r, th.r { text-align: right; }
       const t = el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = hk(v).replace("HK$", "");
     }
     const xs = (end - start) > 20 ? 5 : 2;
-    if (HIST) {                                        // date labels
-      const n = Math.max(1, Math.min(3, Math.round((end - start) * 12)));
-      for (let k = 0; k <= n; k++) { const a = start + (end - start) * k / n, d = new Date(dateAtAge(a)); const t = el("text", { x: x(a), y: H - 12, "text-anchor": k === 0 ? "start" : k === n ? "end" : "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }); }
-    } else
     for (let a = Math.ceil(start / xs) * xs; a <= end; a += xs) { const t = el("text", { x: x(a), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), "font-family": "IBM Plex Mono, monospace" }, svg); t.textContent = a; }
-    if (!HIST) { const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age"; }
-    if (!HIST) [[a0, "now"], [S.gradAge, "work"]].forEach(([a, lab]) => { if (a > start + 0.3 && a < end) {
+    { const xl = el("text", { x: W - m.r, y: H - 12, "text-anchor": "end", "font-size": 11, fill: C("--muted") }, svg); xl.textContent = "age"; }
+    [[a0, "now"], [S.gradAge, "work"]].forEach(([a, lab]) => { if (a > start + 0.3 && a < end) {
       el("line", { x1: x(a), x2: x(a), y1: m.t, y2: H - m.b, stroke: C("--line"), "stroke-width": 1, "stroke-dasharray": "3 3" }, svg);
       const t = el("text", { x: x(a) + 4, y: m.t + 10, "font-size": 11, fill: C("--muted") }, svg); t.textContent = lab; } });
-    if (!HIST) fan.forEach(L => {
+    fan.forEach(L => {
       const d = L.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), isMain = L === main;
       el("path", { d, fill: "none", stroke: isMain ? C("--accent") : C("--muted"), "stroke-width": isMain ? 2.5 : 1.5, "stroke-dasharray": isMain ? "" : "5 4", "stroke-linejoin": "round", "clip-path": "url(#plotClip)" }, svg);
     });
     if (pastPts.length > 1) el("path", { d: pastPts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join(""), fill: "none", stroke: C("--fg"), "stroke-width": 1.5 }, svg);
     hist.forEach(p => el("circle", { cx: x(p[0]), cy: y(p[1]), r: 3.5, fill: C("--fg"), stroke: C("--panel"), "stroke-width": 1.5 }, svg));
-    if (HIST && pastPts.length < 2) { const t = el("text", { x: (m.l + W - m.r) / 2, y: H / 2, "text-anchor": "middle", "font-size": 13, fill: C("--muted") }, svg); t.textContent = "Your history fills in one point each month."; }
-    if (!HIST && isFinite(fa) && fa <= end) {                          // where the likely line reaches your target
+    if (isFinite(fa) && fa <= end) {                          // where the likely line reaches your target
       const fv = S.target * nomAt(fa);
       el("circle", { cx: x(fa), cy: y(fv), r: 6, fill: C("--panel"), stroke: C("--behind"), "stroke-width": 2.5 }, svg);
       const t = el("text", { x: x(fa) - 8, y: y(fv) - 10, "text-anchor": "end", "font-size": 11, fill: C("--behind"), "font-weight": 600 }, svg); t.textContent = `FI at ${fa.toFixed(1)}`;
@@ -449,25 +437,17 @@ td.r, th.r { text-align: right; }
     function fill(a, live) {
       rd.textContent = "";
       const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
-      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : HIST ? "Drag along the line to see any month" : "Drag along the chart to see any age", null, "h");
-      if (HIST) {
-        const b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null), first = pastPts[0];
-        if (live) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · your balance that month` : `Between ${b.from} and ${b.to} (estimated)`) : "—";
-        add("Your balance: ", b ? hk(b.v) : "—");
-        add("Change: ", first && b ? `${b.v >= first[1] ? "+" : "−"}${hk(Math.abs(b.v - first[1]))}` : "—");
-        add("First record: ", first ? hk(first[1]) : "—", "muted"); add("Months recorded: ", `${pastPts.length}`, "muted");
-        return;
-      }
+      add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : "Drag along the chart: left of “now” is your real balance, right is the projection", null, "h");
       const past = a < a0 - 1e-6, b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null);
       add("Your balance: ", (past || !live) && b ? hk(b.v) : "—");
-      if (live && past) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · age ${a.toFixed(1)} · recorded` : `Age ${a.toFixed(1)} · between ${b.from} and ${b.to}`) : `Age ${a.toFixed(1)} · before your first record`;
+      if (live && past) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · age ${a.toFixed(1)} · your real balance` : `Age ${a.toFixed(1)} · between ${b.from} and ${b.to}`) : `Age ${a.toFixed(1)} · before your first record`;
       add(`Likely (${RET}%): `, past ? "—" : hk(at(main, a)));
       add("Bad (4%): ", past ? "—" : hk(at(fan[0], a)), "muted"); add("Good (8%): ", past ? "—" : hk(at(fan[2], a)), "muted");
     }
     const show = ev => {
       const r = svg.getBoundingClientRect(), pxl = (ev.clientX - r.left) * W / r.width;
       const a = Math.max(start, Math.min(end, start + (pxl - m.l) / (W - m.l - m.r) * (end - start)));
-      const b = HIST || a < a0 ? balAt(a) : null, v = HIST || a < a0 ? (b ? b.v : null) : at(main, a), ax = a;
+      const b = a < a0 ? balAt(a) : null, v = a < a0 ? (b ? b.v : null) : at(main, a), ax = a;
       if (v != null) { dMain.setAttribute("cx", x(ax)); dMain.setAttribute("cy", y(Math.min(v, yMax))); dMain.setAttribute("visibility", "visible"); } else dMain.setAttribute("visibility", "hidden");
       fill(a, true);
     };
@@ -501,13 +481,14 @@ td.r, th.r { text-align: right; }
     const monthName = m => new Date(m + "-15T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" });
     rows.slice(0, logShown).forEach(r => {
       const tr = document.createElement("tr");
-      [r.date || `${monthName(r.month)} (day not recorded)`, r.text, r.balance != null ? hkExact(r.balance) : "—"].forEach((v, i) => {
-        const td = document.createElement("td"); td.textContent = v; if (i === 2) td.className = "r num"; tr.appendChild(td); });
+      const dl = r.date ? new Date(r.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : `${monthName(r.month)}, day ?`;
+      [dl, r.text, r.balance != null ? hkExact(r.balance) : "—"].forEach((v, i) => {
+        const td = document.createElement("td"); td.textContent = v; if (i === 0) td.style.whiteSpace = "nowrap"; if (i === 2) td.className = "r num"; tr.appendChild(td); });
       const td = document.createElement("td"); td.className = "r";
       if (db && canWrite) {
-        const del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "Delete";
+        const del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "×"; del.setAttribute("aria-label", `Delete “${r.text}” from the log`); del.style.fontSize = "18px"; del.style.lineHeight = "1";
         del.addEventListener("click", async () => {
-          if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Confirm"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "Delete"; }, 4000); return; }
+          if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Delete?"; del.style.fontSize = "13px"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "×"; del.style.fontSize = "18px"; }, 4000); return; }
           del.disabled = true;
           try {
             const evs = evOf(r.c).filter((_, j) => j !== r.i), { id, ...rest } = r.c;
@@ -910,8 +891,6 @@ td.r, th.r { text-align: right; }
     if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
-  $("vProj").addEventListener("click", () => setView("proj")); $("vHist").addEventListener("click", () => setView("hist"));
-  $("vProj").setAttribute("aria-selected", VIEW === "proj"); $("vHist").setAttribute("aria-selected", VIEW === "hist");
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderChart, 120); });
   renderAll();
 
