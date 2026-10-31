@@ -1,6 +1,6 @@
-# FIRE tracker
+# Investment plan
 
-A personal FIRE (financial independence) tracker for a 70% small value / 30% large-cap momentum plan, with a live market-filter signal.
+A personal investment plan tracker for a 70% small value / 30% large-cap momentum plan, with a live market-filter signal.
 
 **Open it:** https://leemattwn.github.io/fire-tracker/
 
