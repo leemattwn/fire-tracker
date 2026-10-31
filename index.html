@@ -264,14 +264,15 @@ td.r, th.r { text-align: right; }
     <p class="small muted" id="spendNote"></p>
     <div class="btnrow"><button type="button" class="ghost" id="redoSetup">Run setup again</button><button type="button" class="ghost" id="installBtn" hidden>Install as an app</button></div>
     <p class="small muted" id="installNote"></p>
-    <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px">
-      <h3>Backup</h3>
-      <p class="small muted">Everything is saved in this browser on this device only. Download a backup now and then; clearing browser data or switching phones erases it.</p>
-      <div class="btnrow"><button type="button" class="ghost" id="bkDown">Download backup</button></div>
-      <label for="bkFile" class="small">Restore from a backup file<input id="bkFile" type="file" accept="application/json,.json" style="max-width:100%;min-width:0"></label>
-      <p class="status" id="bkStatus" role="status"></p>
-    </div>
   </details>
+
+  <section class="panel" aria-labelledby="bkTitle">
+    <h2 id="bkTitle">Backup</h2>
+    <p class="small muted">Your plan, holdings and history are saved only in this browser on this device. Download a backup now and then; clearing browser data or switching phones erases it.</p>
+    <div class="btnrow"><button type="button" class="ghost" id="bkDown">Download backup</button></div>
+    <label for="bkFile" class="small">Restore from a backup file<input id="bkFile" type="file" accept="application/json,.json" style="max-width:100%;min-width:0"></label>
+    <p class="status" id="bkStatus" role="status"></p>
+  </section>
 </main>
 
 <script>
