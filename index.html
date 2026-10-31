@@ -217,10 +217,10 @@ td.r, th.r { text-align: right; }
   </section>
 
   <section class="panel" aria-labelledby="ciTitle">
-    <h2 id="ciTitle">Check-ins</h2>
-    <p class="small muted">Recorded automatically each month from your shares at that day's prices.</p>
+    <h2 id="ciTitle">History</h2>
+    <p class="small muted">Every trade and signal switch on the day it happened, with your balance right after. Each month also gets one check-in row with your latest balance that month; it updates when you open the app.</p>
     <p class="status" id="ciStatus" role="status"></p>
-    <div id="ciList"><div class="empty">No check-ins yet. Save your first monthly check-in to start tracking against the plan.</div></div>
+    <div id="ciList"><div class="empty">Nothing logged yet. Your first entry appears once your plan starts.</div></div>
   </section>
 
   <section class="panel" aria-labelledby="chartTitle">
@@ -482,26 +482,38 @@ td.r, th.r { text-align: right; }
 
   // ---------- check-in list ----------
   function renderList() {
+    // A log: one row per event (trade, signal switch, plan start) on the day it happened, plus one row per month
+    // for the monthly check-in (your balance, as of the latest update that month). Newest first.
     const wrap = $("ciList"); wrap.textContent = "";
-    if (!checkins.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No check-ins yet. Save your first monthly check-in to start tracking against the plan."; wrap.appendChild(e); return; }
+    if (!checkins.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Nothing logged yet. Your first entry appears once your plan starts."; wrap.appendChild(e); return; }
+    const rows = [];
+    checkins.forEach(c => {
+      rows.push({ date: c.date, key: c.date + "~", text: "Monthly check-in", balance: c.balance, ci: c });   // "~" sorts it after that day's events
+      let last = c.date.slice(0, 7) + "-00";                                   // an event with no day recorded sits right after the one before it
+      evOf(c).forEach((e, i) => { if (e.date) last = e.date; rows.push({ date: e.date, key: last + String(i).padStart(3, "0"), text: e.text,
+        balance: isFinite(e.balance) ? e.balance : null, month: c.date.slice(0, 7) }); });
+    });
+    rows.sort((x, y) => (x.key < y.key ? 1 : x.key > y.key ? -1 : 0));
     const tw = document.createElement("div"); tw.className = "tablewrap";
     const t = document.createElement("table");
-    t.innerHTML = '<thead><tr><th>Balance as of</th><th class="r">Age</th><th class="r">Balance</th><th class="r">vs plan</th><th>What happened</th><th></th></tr></thead>';
+    t.innerHTML = '<thead><tr><th>Date</th><th>What happened</th><th class="r">Balance</th><th class="r">vs plan</th><th></th></tr></thead>';
     const tb = document.createElement("tbody");
-    const dm = d => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    [...checkins].reverse().forEach(c => {
-      const tr = document.createElement("tr"), a = ageAt(c.date), plan = planAt(c.date) * nomAt(a), gap = c.balance - plan;
-      const what = evOf(c).map(e => e.date ? `${dm(e.date)}: ${e.text}` : `${e.text} (date not recorded)`).join(" · ");   // stored in the order they happened
-      const cells = [c.date, a.toFixed(1), hkExact(c.balance), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", what];
-      cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 3) td.className = "r num"; if (i === 3 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
+    const monthName = m => new Date(m + "-15T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      const plan = r.date && r.balance != null ? planAt(r.date) * nomAt(ageAt(r.date)) : NaN, gap = r.balance - plan;
+      const cells = [r.date || `${monthName(r.month)} (day not recorded)`, r.ci ? `Monthly check-in · balance as of ${r.date}` : r.text,
+                     r.balance != null ? hkExact(r.balance) : "—", plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—"];
+      cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 2) td.className = "r num"; if (i === 3 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
+      if (r.ci) tr.style.background = "var(--soft)";
       const td = document.createElement("td"); td.className = "r";
-      if (db && canWrite) {
-        const del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "Delete";
+      if (r.ci && db && canWrite) {
+        const c = r.ci, del = document.createElement("button"); del.type = "button"; del.className = "link danger"; del.textContent = "Delete month";
         del.addEventListener("click", async () => {
-          if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Confirm"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "Delete"; }, 4000); return; }
+          if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Confirm"; setTimeout(() => { del.dataset.armed = ""; del.textContent = "Delete month"; }, 4000); return; }
           del.disabled = true;
-          try { await db.collection("checkins").doc(c.id).delete(); $("ciStatus").textContent = "Check-in deleted."; }
-          catch (e) { $("ciStatus").textContent = "Couldn't delete that check-in. Try again in a moment."; del.disabled = false; }
+          try { await db.collection("checkins").doc(c.id).delete(); $("ciStatus").textContent = "That month's check-in and its log entries were deleted."; }
+          catch (e) { $("ciStatus").textContent = "Couldn't delete that month. Try again in a moment."; del.disabled = false; }
         });
         td.appendChild(del);
       }
@@ -509,6 +521,7 @@ td.r, th.r { text-align: right; }
     });
     t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
   }
+
 
   // ---------- phases ----------
   function renderPhases() {
@@ -674,7 +687,7 @@ td.r, th.r { text-align: right; }
     const bal = Math.round(usdTot * rate * 100) / 100, prev = checkins.find(c => c.id === id);
     if (prev && !pendingEv.length && prev.date === date && Math.abs(prev.balance - bal) < 0.005) return;
     // Each event keeps the day it happened; the check-in's own date is just "balance as of".
-    const events = evOf(prev).concat(pendingEv.filter(e => e.date.slice(0, 7) === mon));
+    const events = evOf(prev).concat(pendingEv.filter(e => e.date.slice(0, 7) === mon).map(e => ({ ...e, balance: bal })));   // balance right after it
     const note = events.map(e => e.text).join("; ");
     ciBusy = true;
     try {
