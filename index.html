@@ -63,9 +63,16 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color:
 .full { grid-column: 1 / -1; }
 form h3.full { margin-top: 6px; }
 body:not(.in-setup) #setup { display: none; }
-.in-setup main > section:not(#setup) { display: none; }
+.in-setup main > section:not(#setup), .in-setup main > details { display: none; }
 #setup { border-color: var(--accent); }
 details > summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 600; }
+details.fold > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--fg); font-weight: 400; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold .ft { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+details.fold .h2 { font-size: 19px; font-weight: 700; }
+details.fold .fbtn { flex: none; font-size: 13px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 7px; padding: 6px 12px; }
+details.fold .fbtn::after { content: "Show"; } details.fold[open] .fbtn::after { content: "Hide"; }
+details.fold:not([open]) { gap: 0; }
 .todo { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .todo .act { border: 2px solid var(--behind); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: color-mix(in srgb, var(--behind) 7%, var(--panel)); }
 .todo .act.good { border-color: var(--accent); background: var(--accent-soft); }
@@ -234,14 +241,14 @@ td.r, th.r { text-align: right; }
     </div>
   </section>
 
-  <section class="panel" aria-labelledby="phTitle">
-    <h2 id="phTitle">What to do in each phase</h2>
+  <details class="panel fold" id="phFold">
+    <summary><span class="ft"><span class="h2" id="phTitle">What to do in each phase</span><span class="small muted" id="phSum"></span></span><span class="fbtn" aria-hidden="true"></span></summary>
     <div class="phases" id="phases"></div>
     <p class="note">Projections assume steady returns; real markets swing well above and below these lines. A planning aid, not financial advice.</p>
-  </section>
+  </details>
 
-  <section class="panel" aria-labelledby="planTitle">
-    <h2 id="planTitle">Your plan</h2>
+  <details class="panel fold" id="planFold">
+    <summary><span class="ft"><span class="h2" id="planTitle">Your plan</span><span class="small muted" id="planSum"></span></span><span class="fbtn" aria-hidden="true"></span></summary>
     <p class="small muted">Change these as your situation changes. Everything updates as you type and saves automatically.</p>
     <form id="planForm" autocomplete="off" novalidate>
       <label for="pDob">Date of birth<input id="pDob" type="date"></label>
@@ -264,7 +271,7 @@ td.r, th.r { text-align: right; }
       <label for="bkFile" class="small">Restore from a backup file<input id="bkFile" type="file" accept="application/json,.json" style="max-width:100%;min-width:0"></label>
       <p class="status" id="bkStatus" role="status"></p>
     </div>
-  </section>
+  </details>
 </main>
 
 <script>
@@ -536,6 +543,8 @@ td.r, th.r { text-align: right; }
       { name: "Retired", when: isFinite(fa) ? `from about ${fa.toFixed(0)}` : "at the target", on: isFinite(fa) && nowAge >= fa, items: [
         `Withdraw ${hkFull(S.retireIncome)} a month in today's money (4% a year), raised with inflation.`, "Keep following the signal; it's what protects you from a bad first few years.", "MPF from 65."] },
     ];
+    const cur = P.find(p => p.on); $("phSum").textContent = cur ? `You're in: ${cur.name}` + (cur.when.startsWith("now to ") ? ` (until ${cur.when.slice(7)})` : ` (age ${cur.when})`) : "";
+    $("planSum").textContent = `${hkFull(S.studentMonthly)} a month until ${S.gradAge}, then ${hkFull(S.monthly)} · ${hkFull(S.retireIncome)} a month in retirement`;
     const box = $("phases"); box.textContent = "";
     P.forEach(p => {
       const d = document.createElement("div"); d.className = "phase" + (p.on ? " now" : "");
@@ -949,6 +958,11 @@ td.r, th.r { text-align: right; }
       rd.readAsText(f);
     });
   }
+  // Folded sections remember whether you left them open (this device only)
+  ["phFold", "planFold"].forEach(id => {
+    const d = $(id); try { d.open = localStorage.getItem("fold-" + id) === "1"; } catch (e) {}
+    d.addEventListener("toggle", () => { try { localStorage.setItem("fold-" + id, d.open ? "1" : "0"); } catch (e) {} });
+  });
   // ---------- installable app (PWA): offline copy, install button, keep data from being cleared ----------
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   let installEvt = null;
