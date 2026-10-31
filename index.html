@@ -174,13 +174,12 @@ td.r, th.r { text-align: right; }
     <div class="sighead"><h2 id="sigTitle">Market signal</h2><span class="sigbadge" id="sigBadge">loading…</span></div>
     <p class="small" id="sigText">Loading today's market data…</p>
     <p class="small muted" id="sigMeta"></p>
-    <p class="small muted">ON while the S&amp;P 500 or AVGS is above its own 150-day average. It turns OFF only when both are below, two closes in a row, and back ON when either is above again for two closes. When it turns OFF, the tracker tells you to move your small-value funds into IB01, and back when it's ON again. GitHub emails you when it flips.</p>
   </section>
 
   <section class="panel" aria-labelledby="buyTitle">
     <div style="display:flex;flex-direction:column;gap:6px">
       <h2 id="buyTitle">This month</h2>
-      <p class="small muted">Pay HKD into IBKR (it converts to US$ for you), buy this fund on the 15th, then tap “I bought it”.</p><p class="small muted" id="buySub"></p>
+      <p class="small muted" id="buySub"></p>
     </div>
     <div class="todo" id="todo" aria-live="polite" hidden>
       <span class="eyebrow">To do</span>
@@ -239,6 +238,7 @@ td.r, th.r { text-align: right; }
 
   <details class="panel fold" id="planFold">
     <summary><span class="ft"><span class="h2" id="planTitle">Your plan</span><span class="small muted" id="planSum"></span></span><span class="fbtn" aria-hidden="true"></span></summary>
+    <p class="small muted">Change any of these as your situation changes. Changes save automatically.</p>
     <form id="planForm" autocomplete="off" novalidate>
       <label for="pDob">Date of birth<input id="pDob" type="date"></label>
       <label for="pPlanStart">Plan started on<input id="pPlanStart" type="date"></label>
@@ -516,7 +516,7 @@ td.r, th.r { text-align: right; }
   function renderPhases() {                                   // the plan's one-line summary and target
     const latest = checkins.length ? checkins[checkins.length - 1] : null;
     const fa = latest ? fiAge(ageAt(latest.date), realOf(latest), S.realReturn) : fiAge(S.age, S.startBalance, S.realReturn);
-    $("planSum").textContent = `${hkFull(S.studentMonthly)}/month until ${S.gradAge}, then ${hkFull(S.monthly)} · retire on ${hkFull(S.retireIncome)}/month`;
+    $("planSum").textContent = `Invest ${hkFull(S.studentMonthly)} a month until you're ${S.gradAge}, then ${hkFull(S.monthly)} a month. Retire on ${hkFull(S.retireIncome)} a month.`;
     const fiNom = isFinite(fa) ? S.target * nomAt(fa) : NaN;
     $("spendNote").textContent = `Target: ${hk(S.target)} in today's money` + (isFinite(fiNom) ? ` (≈ ${hk(fiNom)} by ${dateAtAge(fa).slice(0, 4)}).` : ".");
   }
@@ -602,14 +602,12 @@ td.r, th.r { text-align: right; }
     const park = useUS ? "CASH" : "IB01";                                           // small amounts wait as cash: an IB01 trade would cost too much
     const code = efFirst ? "EF" : parkSV ? park : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "MTUM" : "IUMO");
     const T = Math.round(tgt * 100);
-    const why = efFirst ? `Emergency fund first: ${hk(efHave)} of ${hk(efNeed)} (6 months of living costs). Keep it in a savings account, or IB01 once it's large; it sits outside the plan.`
-      : (tot <= 0 ? `Start with the bigger side of your ${T}/${100 - T} split.`
-         : svSide ? `Small value is ${(sv / tot * 100).toFixed(0)}% of the plan; target ${T}%.` : `Large caps (IUMO side) are ${(sp / tot * 100).toFixed(0)}% of the plan; target ${100 - T}%.`)
-        + (parkSV ? (useUS ? " Signal is OFF: keep this month's money as US$ cash in IBKR; it goes into small value when the signal is back ON." : " Signal is OFF: park it in IB01.")
-           : useUS ? ` ${usd(monthUsd)} is a small buy, so use the US-listed fund (US$0.35 a trade, not US$1.70).` : ` ${usd(monthUsd)} is big enough to buy the Irish fund directly.`);
+    const why = efFirst ? `Put all of it in your emergency fund (a savings account). You have ${hk(efHave)} of ${hk(efNeed)}.`
+      : parkSV ? (useUS ? "Keep this month's money as US$ cash in IBKR. Don't buy anything." : "Buy IB01 with all of it. The signal is OFF.")
+      : `Buy ${code} with all of it.` + (tot <= 0 ? "" : svSide ? ` Small value is ${(sv / tot * 100).toFixed(0)}% of your plan (target ${T}%).` : ` Large caps are ${(sp / tot * 100).toFixed(0)}% of your plan (target ${100 - T}%).`);
     $("buyFund").textContent = code === "EF" ? "Savings" : code === "CASH" ? "Cash" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
     const realAmt = contribAt(ageAt(today())), pay = payNow(realAmt);
-    $("buySub").textContent = `Invest ${hkFull(pay)} this month` + (pay !== realAmt ? ` (${hkFull(realAmt)} raised with Hong Kong inflation since ${S.ageDate.slice(0, 4)}).` : ". It rises with Hong Kong inflation once a year.");
+    $("buySub").textContent = `On the 15th, pay ${hkFull(pay)} into IBKR, buy the fund below, then tap “I bought it”.`;
     renderTodo({ V, sig, filterOn, risk, useUS, student, sp, sv, tot, usNow });
     for (const t in HOLD) { const hv = $("v" + t); if (hv) hv.textContent = holdHint(t, V); }
     const box = $("sides"); box.textContent = "";
@@ -675,13 +673,13 @@ td.r, th.r { text-align: right; }
     if (sig === false && filterOn && risk > 1) {
       const sells = allOf(["AVUV", "AVGS"]);
       return { kind: "out", warn: true, head: "Signal is OFF: move small value to IB01", note: "Moved small value into IB01",
-        text: `Sell all your ${sells.map(s => s.t).join(" and ")} (${usd(risk)}) and buy IB01 with the money. It stays there until the signal turns back ON.`,
+        text: `Sell all your ${sells.map(s => s.t).join(" and ")} (${usd(risk)}). Buy IB01 with the money.`,
         sells, buys: [{ opts: ["IB01"], usd: risk }] };
     }
     if (sig === true && V.IB01 + V.CASH > 1) {
       const amt = V.IB01 + V.CASH, to = amt >= DIRECT_MIN ? "AVGS" : "AVUV", parts = allOf(["IB01", "CASH"]);
-      return { kind: "in", head: "Signal is back ON: put the waiting money back", note: "Moved waiting money back into small value",
-        text: (V.IB01 > 1 ? `Sell your parked IB01 (${usd(V.IB01)})${V.CASH > 1 ? `, add your ${usd(V.CASH)} cash` : ""}` : `Use your ${usd(V.CASH)} cash`) + `, and buy ${to}.`,
+      return { kind: "in", head: "Signal is back ON: buy back small value", note: "Moved waiting money back into small value",
+        text: V.IB01 > 1 ? `Sell your IB01 (${usd(V.IB01)})${V.CASH > 1 ? ` and use your ${usd(V.CASH)} cash` : ""}. Buy ${to} with the money.` : `Use your ${usd(V.CASH)} cash to buy ${to}.`,
         sells: parts.map(p => p.t === "CASH" ? { ...p, sh: p.usd } : p), buys: [{ opts: [to, to === "AVUV" ? "AVGS" : "AVUV"], usd: amt }] };
     }
     if (usNow > US_MOVE) {
@@ -689,7 +687,7 @@ td.r, th.r { text-align: right; }
       const buys = ["IUMO", "AVGS"].map(d => ({ opts: [d], usd: sells.filter(s => dest(s.t) === d).reduce((a, s) => a + s.usd, 0) })).filter(b => b.usd > 1);
       const names = sells.map(s => s.t), list = n => n.length > 1 ? n.slice(0, -1).join(", ") + " and " + n[n.length - 1] : n[0];
       return { kind: "move", head: "Move US-listed funds to Irish ones", note: "Moved US-listed funds to Irish funds",
-        text: `Your ${list(names)} ${names.length > 1 ? "are" : "is"} ${usd(usNow)}. Sell ${list(names)}, then buy ${list(buys.map(b => b.opts[0]))} with the money: lower dividend tax and no US estate tax.`,
+        text: `Sell all your ${list(names)} (${usd(usNow)}). Buy ${list(buys.map(b => b.opts[0]))} with the money.`,
         sells, buys };
     }
     const canRebal = tot > 0 && !(filterOn && sig === false);
@@ -702,7 +700,7 @@ td.r, th.r { text-align: right; }
       const to = over ? (big ? "IUMO" : "MTUM") : (big ? "AVGS" : "AVUV");
       const alt = over ? (to === "MTUM" ? "IUMO" : "MTUM") : (to === "AVUV" ? "AVGS" : "AVUV");
       return { kind: "rebal", head: `Rebalance: small value is ${(sv / tot * 100).toFixed(0)}%`, note: "Rebalanced",
-        text: `It's outside 60–80%, so move about ${usd(move)} back to 70/30: sell ${sells.map(s => `${usd(s.usd)} of ${s.t}`).join(" and ")}, then buy ${to}.`,
+        text: `Sell ${sells.map(s => `${usd(s.usd)} of ${s.t}`).join(" and ")}. Buy ${to} with the money.`,
         sells, buys: [{ opts: [to, alt], usd: move }] };
     }
     return null;
@@ -713,7 +711,7 @@ td.r, th.r { text-align: right; }
     if (!ACT) { box.hidden = true; $("taForm").hidden = true; return; }
     const fees = ACT.sells.reduce((a, s) => a + FEE(s.t) + s.usd * 0.0005, 0) + ACT.buys.reduce((a, b) => a + FEE(b.opts[0]) + b.usd * 0.0005, 0);
     box.hidden = false; box.className = "act" + (ACT.warn ? "" : " good");
-    $("taHead").textContent = ACT.head; $("taText").textContent = ACT.text + ` About ${usd2(fees)} in fees.`;
+    $("taHead").textContent = ACT.head; $("taText").textContent = ACT.text + ` Fees: about ${usd2(fees)}.`;
   }
 
   function taRow(kind, i, t, opts, shares) {
@@ -751,11 +749,11 @@ td.r, th.r { text-align: right; }
   function bfEstimate() {
     const tt = $("bfFund").value; $("bfUnit").textContent = tt === "EF" ? "HK$ added" : tt === "CASH" ? "US$ kept as cash" : "Shares bought";
     const t = $("bfFund").value, p = px(t), hkd = payNow(contribAt(ageAt(today()))), usdAmt = hkd / fxRate();
-    if (t === "EF" || t === "CASH") { $("bfHint").textContent = t === "EF" ? `Type the HK$ you added to your emergency fund.` : `Type the US$ cash you left in IBKR (about ${usd2(usdAmt)}).`; return t === "EF" ? hkd : usdAmt; }
+    if (t === "EF" || t === "CASH") { $("bfHint").textContent = t === "EF" ? "Enter the HK$ you added to your emergency fund." : `Enter the US$ cash you kept in IBKR (about ${usd2(usdAmt)}).`; return t === "EF" ? hkd : usdAmt; }
     const est = isFinite(p) ? Math.max(0, (usdAmt - FEE(t)) / p) : NaN;
     $("bfHint").textContent = isFinite(p)
-      ? `Estimate: ${hkFull(hkd)} is about ${usd2(usdAmt)} at HK$${fxRate()} per US$; less about US$${FEE(t).toFixed(2)} commission, at ${usd2(p)} a share, that's about ${est.toFixed(4)} shares. Type the exact number from IBKR.`
-      : "No price for this fund yet; type the shares from IBKR.";
+      ? `About ${est.toFixed(4)} shares. Enter the exact number from your IBKR confirmation.`
+      : "No price for this fund yet. Enter the shares from your IBKR confirmation.";
     return est;
   }
   $("boughtBtn").addEventListener("click", () => {
@@ -825,14 +823,15 @@ td.r, th.r { text-align: right; }
     if (!sg) { b.className = "sigbadge"; b.textContent = "no data"; $("sigText").textContent = MKT ? "The S&P 500 data didn't load in the last update." : "Couldn't load market data. Check your connection and reload."; $("sigMeta").textContent = ""; return; }
     b.className = "sigbadge " + (sg.on ? "on" : "off"); b.textContent = sg.on ? "Signal ON" : "Signal OFF";
     const rel = (c, m) => { const p = (c / m - 1) * 100; return `${Math.abs(p).toFixed(1)}% ${p >= 0 ? "above" : "below"}`; };
-    const state = sg.pending ? `flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${sg.since}.`;
+    const dl = d => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const state = sg.pending ? `Flips to ${sg.raw ? "ON" : "OFF"} if the next close agrees.` : `${sg.on ? "ON" : "OFF"} since ${dl(sg.since)}.`;
     $("sigText").textContent = sg.sma150 && sg.avgs_sma150
-      ? `S&P 500 ${rel(sg.close, sg.sma150)} its 150-day average · AVGS ${rel(sg.avgs_close, sg.avgs_sma150)} its 150-day average · ${state}`
-      : `Signal ${sg.on ? "ON" : "OFF"} · ${state}`;                                  // older data file, until the next update
+      ? `S&P 500 ${rel(sg.close, sg.sma150)} · AVGS ${rel(sg.avgs_close, sg.avgs_sma150)} their 150-day averages · ${state}`
+      : state;                                                                       // older data file, until the next update
     const age = (Date.now() - new Date(MKT.updated)) / 864e5;
     const hkt = iso => new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Hong_Kong", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     const pt = Object.values(MKT.prices || {}).map(p => p.time).filter(Boolean).sort().pop();
-    $("sigMeta").textContent = `Signal from the ${sg.date} close · fund prices ${pt ? "as of " + hkt(pt) : "updated " + hkt(MKT.updated)} Hong Kong time (refreshed hourly while markets are open, about 15 minutes delayed)${age > 4 ? " · data is " + Math.floor(age) + " days old" : ""}${MKT.errors && MKT.errors.length ? " · some prices missing" : ""}`;
+    $("sigMeta").textContent = `Prices as of ${pt ? hkt(pt) : hkt(MKT.updated)} Hong Kong time.${age > 4 ? ` Data is ${Math.floor(age)} days old.` : ""}${MKT.errors && MKT.errors.length ? " Some prices are missing." : ""}`;
   }
   async function loadMarket() {
     try {
