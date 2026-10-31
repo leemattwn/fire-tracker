@@ -486,11 +486,13 @@ td.r, th.r { text-align: right; }
     if (!checkins.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "No check-ins yet. Save your first monthly check-in to start tracking against the plan."; wrap.appendChild(e); return; }
     const tw = document.createElement("div"); tw.className = "tablewrap";
     const t = document.createElement("table");
-    t.innerHTML = '<thead><tr><th>Date</th><th class="r">Age</th><th class="r">Balance</th><th class="r">vs plan</th><th>Note</th><th></th></tr></thead>';
+    t.innerHTML = '<thead><tr><th>Balance as of</th><th class="r">Age</th><th class="r">Balance</th><th class="r">vs plan</th><th>What happened</th><th></th></tr></thead>';
     const tb = document.createElement("tbody");
+    const dm = d => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
     [...checkins].reverse().forEach(c => {
       const tr = document.createElement("tr"), a = ageAt(c.date), plan = planAt(c.date) * nomAt(a), gap = c.balance - plan;
-      const cells = [c.date, a.toFixed(1), hkExact(c.balance), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", c.note || ""];
+      const what = evOf(c).map(e => e.date ? `${dm(e.date)}: ${e.text}` : `${e.text} (date not recorded)`).join(" · ");   // stored in the order they happened
+      const cells = [c.date, a.toFixed(1), hkExact(c.balance), plan > 0 ? (gap >= 0 ? "+" : "−") + hk(Math.abs(gap)) : "—", what];
       cells.forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i >= 1 && i <= 3) td.className = "r num"; if (i === 3 && plan > 0) td.style.color = gap >= 0 ? "var(--ahead)" : "var(--behind)"; tr.appendChild(td); });
       const td = document.createElement("td"); td.className = "r";
       if (db && canWrite) {
@@ -661,20 +663,32 @@ td.r, th.r { text-align: right; }
   });
 
   // ---------- automatic monthly check-in ----------
-  let ciBusy = false;
+  let ciBusy = false, pendingEv = [];
   async function autoCheckin(extra) {
-    if (!MKT || !db || !S.setupDone || ciBusy) return;
+    if (extra) pendingEv.push({ date: today(), text: extra });     // kept until a check-in saves it (prices loading, or another save running)
+    if (!MKT || !db || !S.setupDone) return;
+    if (ciBusy) { if (extra) setTimeout(() => autoCheckin(), 1500); return; }
     const V = vals(), usdTot = planUsd(V);
     if (!(usdTot > 0) || missingPx().length) return;
     const rate = fxRate(), date = today(), mon = date.slice(0, 7), id = "m" + mon.replace("-", "");
     const bal = Math.round(usdTot * rate * 100) / 100, prev = checkins.find(c => c.id === id);
-    if (prev && !extra && prev.date === date && Math.abs(prev.balance - bal) < 0.005) return;
-    const note = [prev && prev.note, extra].filter(Boolean).join("; ");
+    if (prev && !pendingEv.length && prev.date === date && Math.abs(prev.balance - bal) < 0.005) return;
+    // Each event keeps the day it happened; the check-in's own date is just "balance as of".
+    const events = evOf(prev).concat(pendingEv.filter(e => e.date.slice(0, 7) === mon));
+    const note = events.map(e => e.text).join("; ");
     ciBusy = true;
     try {
       for (const c of checkins) if (c.id !== id && c.date && c.date.slice(0, 7) === mon) await db.collection("checkins").doc(c.id).delete();
-      await db.collection("checkins").doc(id).set({ date, balance: bal, shares: { ...HOLD }, usd: V, usdhkd: rate, note, auto: true, createdAt: new Date().toISOString() });
+      await db.collection("checkins").doc(id).set({ date, balance: bal, shares: { ...HOLD }, usd: V, usdhkd: rate, events, note, auto: true, createdAt: new Date().toISOString() });
+      pendingEv = [];
     } finally { ciBusy = false; }
+  }
+  // Events saved before they had dates: "Plan started/restarted" happened on the plan's start day; others are undated.
+  function evOf(c) {
+    if (!c) return [];
+    if (Array.isArray(c.events)) return c.events;
+    return (c.note || "").split("; ").filter(Boolean).map(text => ({
+      date: /^Plan (re)?started$/.test(text) && S.ageDate && S.ageDate.slice(0, 7) === (c.date || "").slice(0, 7) ? S.ageDate : null, text }));
   }
 
   // ---------- to do: signal switches, the yearly move to Irish funds, rebalancing ----------
