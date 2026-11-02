@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02T13:27:48+00:00",
+ "updated": "2026-11-02T15:09:38+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
@@ -14,68 +14,68 @@
   "avgs_above": true,
   "raw": true,
   "on": true,
-  "since": "2025-06-10",
+  "since": "2025-06-11",
   "pending": false
  },
  "prices": {
   "VOO": {
    "symbol": "VOO",
    "currency": "USD",
-   "price": 694.81,
-   "usd": 694.81,
-   "date": "2026-10-30",
-   "time": "2026-10-30T20:00+00:00"
+   "price": 698.88,
+   "usd": 698.88,
+   "date": "2026-11-02",
+   "time": "2026-11-02T14:58+00:00"
   },
   "AVUV": {
    "symbol": "AVUV",
    "currency": "USD",
-   "price": 123.43,
-   "usd": 123.43,
-   "date": "2026-10-30",
-   "time": "2026-10-30T20:00+00:00"
+   "price": 124.95,
+   "usd": 124.95,
+   "date": "2026-11-02",
+   "time": "2026-11-02T14:58+00:00"
   },
   "VUAA": {
    "symbol": "VUAA.L",
    "currency": "USD",
-   "price": 147.3,
-   "usd": 147.3,
+   "price": 147.429,
+   "usd": 147.429,
    "date": "2026-11-02",
-   "time": "2026-11-02T13:12+00:00"
+   "time": "2026-11-02T14:39+00:00"
   },
   "AVGS": {
    "symbol": "AVGS.L",
    "currency": "USD",
-   "price": 28.829,
-   "usd": 28.829,
+   "price": 28.88,
+   "usd": 28.88,
    "date": "2026-11-02",
-   "time": "2026-11-02T13:12+00:00"
+   "time": "2026-11-02T14:38+00:00"
   },
   "IB01": {
    "symbol": "IB01.L",
    "currency": "USD",
-   "price": 122.48,
-   "usd": 122.48,
+   "price": 122.46,
+   "usd": 122.46,
    "date": "2026-11-02",
-   "time": "2026-11-02T13:08+00:00"
+   "time": "2026-11-02T14:39+00:00"
   },
   "IUMO": {
    "symbol": "IUMO.L",
    "currency": "USD",
-   "price": 19.825,
-   "usd": 19.825,
+   "price": 19.6,
+   "usd": 19.6,
    "date": "2026-11-02",
-   "time": "2026-11-02T13:11+00:00"
+   "time": "2026-11-02T14:36+00:00"
   },
   "MTUM": {
    "symbol": "MTUM",
    "currency": "USD",
-   "price": 284.1,
-   "usd": 284.1,
-   "date": "2026-10-30",
-   "time": "2026-10-30T20:00+00:00"
+   "price": 281.79,
+   "usd": 281.79,
+   "date": "2026-11-02",
+   "time": "2026-11-02T14:58+00:00"
   }
  },
- "usdhkd": 7.8461,
+ "usdhkd": 7.846,
  "cpi": {
   "latest": "2026-09",
   "yoy": 1.9,
