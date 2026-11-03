@@ -1,0 +1,42 @@
+name: One-off multi-factor data download
+on:
+  push:
+    paths: [".github/workflows/probe-mf.yml"]
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, json, time
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36", "Accept": "*/*"}
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=90).read()
+          log = []
+          for code in ["706536", "706048", "990100", "703755", "703025"]:
+              try:
+                  raw = get(f"https://app2.msci.com/products/service/index/indexmaster/getLevelDataForGraph?currency_symbol=USD&index_variant=NETR&start_date=19970101&end_date=20261103&data_frequency=DAILY&baseValue=false&index_codes={code}")
+                  open(f"probe/msci_{code}.json", "wb").write(raw); log.append(f"msci {code}: {len(raw)}")
+              except Exception as e: log.append(f"msci {code}: {e!r}")
+          syms = ["IFSW.L", "JPGL.L", "IWDA.L", "AVGS.L", "IUMO.L", "CSPX.L", "AVUV", "IWMO.L"]
+          for q in ["IE00BZ0PKT83", "IE00BJRCLL96", "IE000A9QKUV7", "Avantis Global Equity UCITS", "IE000RJECXS5"]:
+              try:
+                  res = json.load(urllib.request.urlopen(urllib.request.Request("https://query2.finance.yahoo.com/v1/finance/search?quotesCount=10&q=" + urllib.parse.quote(q), headers=UA), timeout=60))["quotes"]
+                  log.append(f"search {q}: " + ", ".join(x.get("symbol", "") + "/" + x.get("exchange", "") + "/" + (x.get("shortname") or "") for x in res))
+                  for x in res:
+                      if x.get("exchange") in ("LSE", "GER", "AMS", "EBS", "MIL") and x["symbol"] not in syms: syms.append(x["symbol"])
+              except Exception as e: log.append(f"search {q}: {e!r}")
+          for s in syms:
+              try:
+                  r = json.load(urllib.request.urlopen(urllib.request.Request(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?period1=0&period2={int(time.time())}&interval=1d", headers=UA), timeout=60))["chart"]["result"][0]
+                  json.dump({"t": r["timestamp"], "adj": r["indicators"]["adjclose"][0]["adjclose"], "cur": r["meta"].get("currency"), "name": r["meta"].get("longName")}, open(f"probe/{s}.json", "w"))
+                  log.append(f"{s}: ok {len(r['timestamp'])} {r['meta'].get('currency')} {r['meta'].get('longName')}")
+              except Exception as e: log.append(f"{s}: {e!r}")
+              time.sleep(1)
+          open("probe/logmf.txt", "w").write("\n".join(log))
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add probe && git commit -m "mf probe" && git pull --rebase && git push
