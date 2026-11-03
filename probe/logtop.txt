@@ -1,9 +1,0 @@
-SPY: ok 8499
-OEF: ok 6542
-XLG: ok 5406
-MGC: ok 4743
-RSP: ok 5916
-SPMO: ok 2782
-MTUM: ok 3408
-Portfolios_Formed_on_ME_daily: ok
-Portfolios_Formed_on_ME: ok
