@@ -1,0 +1,33 @@
+name: One-off top-companies data download
+on:
+  push:
+    paths: [".github/workflows/probe-top.yml"]
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          python3 - <<'PY'
+          import urllib.request, json, time, zipfile, io
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36"}
+          log = []
+          for s in ["SPY", "OEF", "XLG", "MGC", "RSP", "SPMO", "MTUM"]:
+              try:
+                  r = json.load(urllib.request.urlopen(urllib.request.Request(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?period1=0&period2={int(time.time())}&interval=1d", headers=UA), timeout=60))["chart"]["result"][0]
+                  json.dump({"t": r["timestamp"], "adj": r["indicators"]["adjclose"][0]["adjclose"], "name": r["meta"].get("longName")}, open(f"probe/{s}.json", "w")); log.append(f"{s}: ok {len(r['timestamp'])}")
+              except Exception as e: log.append(f"{s}: {e!r}")
+              time.sleep(1)
+          base = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
+          for n in ["Portfolios_Formed_on_ME_daily", "Portfolios_Formed_on_ME"]:
+              try:
+                  raw = urllib.request.urlopen(urllib.request.Request(base + n + "_CSV.zip", headers=UA), timeout=120).read(); z = zipfile.ZipFile(io.BytesIO(raw))
+                  open("probe/" + n + ".csv", "wb").write(z.read(z.namelist()[0])); log.append(f"{n}: ok")
+              except Exception as e: log.append(f"{n}: {e!r}")
+          open("probe/logtop.txt", "w").write("\n".join(log))
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add probe && git commit -m "top probe" && git pull --rebase && git push
