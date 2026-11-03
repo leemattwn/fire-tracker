@@ -1,9 +1,0 @@
-page https://www.spglobal.com/spdji/en/indices/dividends-factors/sp-500-momentum-index/: <HTTPError 403: 'Forbidden'>
-page https://www.spglobal.com/spdji/en/indices/equity/sp-500/: <HTTPError 403: 'Forbidden'>
-yahoo S&P 500 Momentum: SPMO/ETF/Invesco S&P 500 Momentum ETF, SPMO.MX/ETF/INVESCO EXCHANGE TRADED FD TR I, ^SP500MUP/INDEX/S&P 500 Momentum Index (US Doll, SPMO-USD/CRYPTOCURRENCY/Invesco S&P 500 Momentum Tokenized ETF (Robinhood) USD, ^SP500MUN/INDEX/S&P 500 Momentum Index (US Doll, ^SPXMHCT/INDEX/S&P 500 Momentum CAD Hedged Ind, ^SPMUTSET/INDEX/S&P 500 Momentum Index Settleme
-  got ^SP500MUP 1
-  got ^SP500MUN 1
-  got ^SPXMHCT 1
-  got ^SPMUTSET 1
-yahoo SP500 Momentum Index: 
-yahoo SPXMOM: 
