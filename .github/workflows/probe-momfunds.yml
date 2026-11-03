@@ -1,0 +1,27 @@
+name: One-off momentum ETF prices
+on:
+  push:
+    paths: [".github/workflows/probe-momfunds.yml"]
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          python3 - <<'PY'
+          import urllib.request, json, time
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36"}
+          log = []
+          for s in ["FDMO", "QMOM", "JMOM", "PDP", "MMTM", "SPMO", "MTUM", "SPY", "XMMO", "XSMO", "IWMO.L", "IUMO.L", "VFMO", "ONEO"]:
+              try:
+                  r = json.load(urllib.request.urlopen(urllib.request.Request(f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?range=max&interval=1d", headers=UA), timeout=60))["chart"]["result"][0]
+                  json.dump({"t": r["timestamp"], "adj": r["indicators"]["adjclose"][0]["adjclose"], "name": r["meta"].get("longName")}, open(f"probe/{s}.json", "w")); log.append(f"{s}: ok {len(r['timestamp'])} {r['meta'].get('longName')}")
+              except Exception as e: log.append(f"{s}: {e!r}")
+              time.sleep(1)
+          open("probe/logmf2.txt", "w").write("\n".join(log))
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add probe && git commit -m "momfunds probe" && git pull --rebase && git push
