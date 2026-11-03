@@ -1,0 +1,44 @@
+name: One-off S&P momentum index download
+on:
+  push:
+    paths: [".github/workflows/probe-spmom.yml"]
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p probe
+          python3 - <<'PY'
+          import urllib.request, urllib.parse, json, re, time
+          UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36", "Accept": "*/*", "Accept-Language": "en-US"}
+          log = []
+          def get(u):
+              return urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=60).read()
+          ids = set()
+          for u in ["https://www.spglobal.com/spdji/en/indices/dividends-factors/sp-500-momentum-index/", "https://www.spglobal.com/spdji/en/indices/equity/sp-500/"]:
+              try:
+                  h = get(u).decode("utf-8", "ignore"); f = re.findall(r'indexId["\'=:\s]+["\']?(\d{3,})', h); ids.update(f); log.append(f"page {u[-40:]}: {len(h)} bytes, ids {sorted(set(f))[:10]}")
+                  open("probe/page_" + str(len(ids)) + ".html", "w").write(h[:400000])
+              except Exception as e: log.append(f"page {u}: {e!r}")
+          for i in sorted(ids)[:6]:
+              for api in [f"https://www.spglobal.com/spdji/en/util/redesign/index-data/get-performance-data-for-datawidget-redesign.dot?language_id=1&indexId={i}&getchildindex=true&returntype=T-&currency=USD&currencyChangeFlag=false",
+                          f"https://www.spglobal.com/spdji/en/util/redesign/index-data/get-performance-data-for-datawidget-redesign.dot?indexId={i}"]:
+                  try:
+                      raw = get(api); open(f"probe/sp_{i}.json", "wb").write(raw); log.append(f"api {i}: {len(raw)} bytes {raw[:120]!r}"); break
+                  except Exception as e: log.append(f"api {i}: {e!r}")
+          for q in ["S&P 500 Momentum", "SP500 Momentum Index", "SPXMOM"]:
+              try:
+                  res = json.load(urllib.request.urlopen(urllib.request.Request("https://query2.finance.yahoo.com/v1/finance/search?quotesCount=15&q=" + urllib.parse.quote(q), headers=UA), timeout=60))["quotes"]
+                  log.append(f"yahoo {q}: " + ", ".join((x.get("symbol") or "") + "/" + (x.get("quoteType") or "") + "/" + (x.get("shortname") or "") for x in res))
+                  for x in res:
+                      if x.get("quoteType") == "INDEX":
+                          r = json.load(urllib.request.urlopen(urllib.request.Request(f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(x['symbol'])}?period1=0&period2={int(time.time())}&interval=1d", headers=UA), timeout=60))["chart"]["result"][0]
+                          json.dump({"t": r["timestamp"], "c": r["indicators"]["quote"][0]["close"], "name": x.get("shortname")}, open(f"probe/yidx_{re.sub('[^A-Za-z0-9]', '', x['symbol'])}.json", "w")); log.append(f"  got {x['symbol']} {len(r['timestamp'])}")
+              except Exception as e: log.append(f"yahoo {q}: {e!r}")
+          open("probe/logsp.txt", "w").write("\n".join(log))
+          PY
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add probe && git commit -m "spmom probe" && git pull --rebase && git push
