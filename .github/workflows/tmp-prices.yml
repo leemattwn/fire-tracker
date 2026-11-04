@@ -1,0 +1,16 @@
+name: tmp-prices
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import json, urllib.request, datetime
+          for s in ["^GSPC","VOO","AVUV","MTUM","VUAA.L","AVGS.L","IUMO.L","IWM","IJS","ACWI"]:
+              u=f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?period1=1789776000&period2=1793923200&interval=1d&events=div"
+              r=json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"Mozilla/5.0"})))["chart"]["result"][0]
+              q=r["indicators"]; c=q["quote"][0]["close"]; a=q.get("adjclose",[{}])[0].get("adjclose")
+              rows=[(datetime.datetime.utcfromtimestamp(t).strftime("%Y-%m-%d"),x,(a[i] if a else None)) for i,(t,x) in enumerate(zip(r["timestamp"],c)) if x]
+              print("ROW",s,json.dumps(rows))
+          PY
