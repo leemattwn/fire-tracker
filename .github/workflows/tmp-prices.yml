@@ -1,0 +1,14 @@
+name: tmp-prices
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 - <<'PY'
+          import json, urllib.request
+          for s in ["INTC","GOOGL","AVGO","SPY"]:
+              u=f"https://query1.finance.yahoo.com/v8/finance/chart/{s}?range=5d&interval=1d"
+              r=json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"Mozilla/5.0"})))["chart"]["result"][0]
+              print("ROW",s,r["meta"]["regularMarketPrice"])
+          PY
