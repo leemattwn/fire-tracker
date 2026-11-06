@@ -196,6 +196,14 @@ td.r, th.r { text-align: right; }
         </form>
       </div>
     </div>
+    <div class="todo" id="splitBox" aria-live="polite" hidden>
+      <span class="eyebrow">Share split</span>
+      <div class="act good">
+        <span class="ah" id="spHead"></span>
+        <p class="small" id="spText"></p>
+        <div class="btnrow"><button type="button" id="spYes"></button><button type="button" class="ghost" id="spNo"></button></div>
+      </div>
+    </div>
     <div class="buyrow">
       <div class="buycall"><span class="eyebrow">This month, buy</span><span class="v" id="buyFund">AVUV</span><span class="s" id="buyWhy">Loading…</span>
         <button type="button" id="boughtBtn" style="margin-top:8px;align-self:flex-start">I bought it</button></div>
@@ -835,6 +843,67 @@ td.r, th.r { text-align: right; }
     const pt = Object.values(MKT.prices || {}).map(p => p.time).filter(Boolean).sort().pop();
     $("sigMeta").textContent = `Prices as of ${pt ? hkt(pt) : hkt(MKT.updated)} Hong Kong time.${age > 4 ? ` Data is ${Math.floor(age)} days old.` : ""}${MKT.errors && MKT.errors.length ? " Some prices are missing." : ""}`;
   }
+  // ---------- share splits: data/market.json lists each fund's splits; holdings are adjusted once per split ----------
+  // If the shares were last saved before the split day, they are the old count and are multiplied automatically.
+  // If they were saved on or after it (you may already have typed IBKR's new number), you're asked instead.
+  let SPL = { applied: {} }, SH_UPDATED = "", splitBusy = false;
+  const dShort = d => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const ratioTxt = r => r >= 1 ? `${+r.toFixed(4)}-for-1` : `1-for-${+(1 / r).toFixed(4)}`;
+  const fmtSh = n => (+n.toFixed(4)).toLocaleString("en");
+  async function saveSplits(next) { SPL = next; await db.doc("plan/splits").set(next); }
+  async function checkSplits() {
+    if (splitBusy || !MKT || !MKT.splits || !db || !S.setupDone) return renderSplit();
+    splitBusy = true;
+    try {
+      const cut = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+      for (const t in MKT.splits) {
+        if (!(t in HOLD)) continue;
+        for (const s of MKT.splits[t]) {
+          const key = `${t}@${s.date}`, r = +s.ratio;
+          if (SPL.applied[key] || !(r > 0) || Math.abs(r - 1) < 1e-9) continue;
+          const have = +HOLD[t] || 0;
+          if (have <= 0 || s.date < cut) { await saveSplits({ ...SPL, applied: { ...SPL.applied, [key]: "skipped" } }); continue; }
+          const after = Math.round(have * r * 1e6) / 1e6, head = `${t} split ${ratioTxt(r)} on ${dShort(s.date)}`;
+          if (SH_UPDATED && SH_UPDATED < s.date) {
+            HOLD = { ...HOLD, [t]: after }; await saveShares();
+            await saveSplits({ ...SPL, applied: { ...SPL.applied, [key]: today() },
+              notice: { key, head, text: `Your ${t} went from ${fmtSh(have)} to ${fmtSh(after)} shares, so its value is unchanged. Check it matches IBKR.` } });
+            fillHoldForm(); renderBuy();
+            await autoCheckin(`${head}: ${fmtSh(have)} → ${fmtSh(after)} shares`);
+          } else if (!SPL.ask || SPL.ask.key !== key) {
+            await saveSplits({ ...SPL, ask: { key, t, r, have, head } });
+          }
+        }
+      }
+    } finally { splitBusy = false; }
+    renderSplit();
+  }
+  function renderSplit() {
+    const box = $("splitBox"), a = SPL.ask, n = SPL.notice;
+    if (a && SPL.applied[a.key]) { SPL = { ...SPL, ask: null }; }
+    if (SPL.ask) {
+      const have = +HOLD[a.t] || 0, after = Math.round(have * a.r * 1e6) / 1e6;
+      $("spHead").textContent = a.head;
+      $("spText").textContent = `Your tracker shows ${fmtSh(have)} ${a.t} shares. If that's your old number, update it to ${fmtSh(after)}. If you already changed it to match IBKR, tap “Already correct”.`;
+      $("spYes").textContent = `Update to ${fmtSh(after)}`; $("spNo").textContent = "Already correct"; $("spNo").hidden = false; box.hidden = false;
+    } else if (n) {
+      $("spHead").textContent = n.head; $("spText").textContent = n.text;
+      $("spYes").textContent = "OK"; $("spNo").hidden = true; box.hidden = false;
+    } else box.hidden = true;
+  }
+  $("spYes").addEventListener("click", async () => {
+    const a = SPL.ask;
+    if (!a) { await saveSplits({ ...SPL, notice: null }); return renderSplit(); }
+    const have = +HOLD[a.t] || 0, after = Math.round(have * a.r * 1e6) / 1e6;
+    HOLD = { ...HOLD, [a.t]: after }; await saveShares();
+    await saveSplits({ ...SPL, ask: null, applied: { ...SPL.applied, [a.key]: today() } });
+    fillHoldForm(); renderBuy(); renderSplit();
+    await autoCheckin(`${a.head}: ${fmtSh(have)} → ${fmtSh(after)} shares`);
+  });
+  $("spNo").addEventListener("click", async () => {
+    const a = SPL.ask; if (!a) return;
+    await saveSplits({ ...SPL, ask: null, applied: { ...SPL.applied, [a.key]: "already" } }); renderSplit();
+  });
   async function loadMarket() {
     try {
       const r = await fetch("data/market.json?t=" + Date.now(), { cache: "no-store" });
@@ -842,6 +911,7 @@ td.r, th.r { text-align: right; }
       MKT = await r.json();
     } catch (e) { MKT = null; }
     renderSignal(); renderAll();
+    await checkSplits();                                                              // before the check-in, so it saves the right balance
     if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
@@ -881,7 +951,8 @@ td.r, th.r { text-align: right; }
     hasSaved = s.exists; S = norm(s.exists ? s.data() : {}); renderAll();
     if (!S.setupDone) { if (!document.body.classList.contains("in-setup")) openSetup(false); }
   });
-  db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; fillHoldForm(); renderBuy(); } });
+  db.doc("plan/splits").onSnapshot(s => { SPL = s.exists ? { applied: {}, ...s.data() } : { applied: {} }; renderSplit(); });
+  db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; SH_UPDATED = d.updated || ""; fillHoldForm(); renderBuy(); } });
   db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });
   $("bkDown").addEventListener("click", () => {
     try {

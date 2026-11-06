@@ -40,6 +40,7 @@ The app only shows what to do and what happened. This page explains the rules be
 - **Plan says by now:** where the plan expected you to be today. It assumes each month's buy happens on the 15th.
 - **Monthly check-in:** each time you open the app, it saves this month's balance (shares × latest prices, in HK$). The last one each month stays. The chart's past line is made of these check-ins.
 - **History:** every buy, signal switch, rebalance and move, on the day it happened, with your balance right after.
+- **Share splits:** when a fund splits (MTUM went 4-for-1 on 5 Nov 2026), the app multiplies your saved shares once, so the split doesn't look like a crash. If your shares were saved after the split day (you may have already typed IBKR's new number), it asks first instead.
 
 ## How the data works
 
@@ -49,6 +50,7 @@ The app only shows what to do and what happened. This page explains the rules be
   - **signal**: S&P 500 and AVGS closes, each one's 150-day average, and the filter state.
   - **prices** in US$ for IUMO, MTUM, VOO, AVUV, VUAA, AVGS and IB01.
   - **usdhkd**: the USD/HKD rate.
+  - **splits**: each fund's share splits (from Yahoo Finance, plus any known ones).
   - **cpi**: Hong Kong Composite CPI (Census and Statistics Department).
 
 To refresh the data by hand: Actions tab → "Update market data" → Run workflow.

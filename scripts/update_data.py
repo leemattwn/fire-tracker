@@ -40,6 +40,27 @@ def yahoo(sym, rng="2y", closed_only=False):
     raise RuntimeError(f"{sym}: {last}")
 
 
+def splits_of(sym):
+    """Share splits in the last year: [(date, new shares per old share)]. Read from Yahoo's split events."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}?range=1y&interval=1d&events=split"
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+        res = json.load(r)["chart"]["result"][0]
+    return parse_splits(res)
+
+
+def parse_splits(res):
+    out = []
+    for ev in ((res.get("events") or {}).get("splits") or {}).values():
+        num, den = float(ev.get("numerator") or 0), float(ev.get("denominator") or 0)
+        if num > 0 and den > 0 and abs(num / den - 1) > 1e-9:
+            out.append((datetime.fromtimestamp(ev["date"], timezone.utc).strftime("%Y-%m-%d"), round(num / den, 6)))
+    return sorted(out)
+
+
+# Splits already known, kept even if a data source misses them (MTUM 4-for-1, 5 Nov 2026).
+KNOWN_SPLITS = {"MTUM": [("2026-11-05", 4.0)]}
+
+
 def backup_spx():
     """Backup source for S&P 500 daily closes (CNBC) if Yahoo is down. Drops today's bar while New York is still trading."""
     now = datetime.now(timezone.utc)
@@ -167,6 +188,17 @@ def main():
             data["errors"].append(f"{name}: {e}")
             if name in old.get("prices", {}): prices[name] = {**old["prices"][name], "stale": True}
     data["prices"] = prices
+
+    # Splits: the tracker multiplies your saved shares once per split, so a split doesn't look like a crash.
+    splits = {t: {s["date"]: s["ratio"] for s in v} for t, v in (old.get("splits") or {}).items()}
+    for t, v in KNOWN_SPLITS.items():
+        for d, r in v: splits.setdefault(t, {})[d] = r
+    for name, sym in FUNDS.items():
+        try:
+            for d, r in splits_of(sym): splits.setdefault(name, {})[d] = r
+        except Exception as e:
+            print(f"{name} splits: {e}")   # not shown in the app: missing split data only matters on a split day
+    data["splits"] = {t: [{"date": d, "ratio": r} for d, r in sorted(v.items())] for t, v in splits.items() if v}
 
     try:
         m, r = yahoo("HKD=X", "5d")
