@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T03:36:58+00:00",
+ "updated": "2026-11-06T03:37:13+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
@@ -83,7 +83,7 @@
    }
   ]
  },
- "usdhkd": 7.8372,
+ "usdhkd": 7.8369,
  "cpi": {
   "latest": "2026-09",
   "yoy": 1.9,
