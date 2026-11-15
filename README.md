@@ -9,7 +9,7 @@ The app only shows what to do and what happened. This page explains the rules be
 ## The plan
 
 - **Split:** 70% small value (AVUV now, AVGS once larger), 30% large caps (IUMO, or MTUM for small buys). VUAA or VOO bought before the switch to IUMO are kept, count toward the 30%, and are sold first whenever money comes out of that side.
-- **Monthly buy (the 15th):** the whole amount goes to whichever side is below its target.
+- **Monthly buy (the 15th):** the whole amount goes to whichever side is below its target. If the 15th is a weekend or a New York/London market holiday, buy on the next day both are open; the app and the reminder show that date.
   - Buys under US$800 use the US-listed fund (AVUV or MTUM, US$0.35 a trade). Bigger buys go straight to the Irish fund (AVGS or IUMO, US$1.70 a trade).
   - The amount rises with Hong Kong inflation once a year from the plan start.
 - **Move to Irish funds:** once US-listed funds (MTUM, AVUV, any VOO) pass US$3,000, sell them and buy IUMO and AVGS. Irish funds pay less dividend tax and avoid US estate tax.
