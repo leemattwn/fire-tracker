@@ -698,8 +698,8 @@ td.r, th.r { text-align: right; }
       const otherTxt = (d.other || []).map(o => `${o.symbol} ${fmtSh(o.qty)}`).join(", ");
       const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt} (not counted).` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
       const lastSave = SH_UPDATED ? new Date(Date.UTC(+SH_UPDATED.slice(0, 4), +SH_UPDATED.slice(5, 7) - 1, +SH_UPDATED.slice(8, 10) - 1)).toISOString().slice(0, 10) : "";   // a day before your last change
-      if (lastSave && d.asof < lastSave && SH_UPDATED !== IBS.saved)   // a change made by this sync itself doesn't count
-        return ibUi(`IBKR sync: IBKR's latest statement (${dd(d.asof)}) is older than your last change here, so your holdings were kept. It will update after the next sync.${extra}`);
+      if (!manual && lastSave && d.asof < lastSave && SH_UPDATED !== IBS.saved)   // automatic syncs keep a newer change made here; "Sync now" always uses IBKR
+        return ibUi(`IBKR sync: IBKR's latest statement (${dd(d.asof)}) is older than your last change here, so your holdings were kept. Tap “Sync now” to use IBKR's numbers anyway.${extra}`);
       const next = { ...HOLD }, diffs = [];
       for (const t of IB_FUNDS) { const v = +(d.shares || {})[t] || 0; if (Math.abs((+HOLD[t] || 0) - v) > 1e-6) { diffs.push(`${t} ${fmtSh(+HOLD[t] || 0)} → ${fmtSh(v)}`); next[t] = v; } }
       const apply = diffs.length && (manual || IBS.asof !== d.asof || IBS.fetched !== d.fetched);
