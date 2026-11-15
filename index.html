@@ -33,6 +33,8 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ibkr { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
+.ibkr input { width: 100%; }
 .stat .v.long { font-size: clamp(17px, 5vw, 26px); }
 .stat .s { font-size: 13px; color: var(--muted); }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); align-self: flex-start; }
@@ -217,6 +219,14 @@ td.r, th.r { text-align: right; }
       <div class="btnrow"><button type="submit">Add to my holdings</button><button type="button" class="ghost" id="bfCancel">Cancel</button></div>
     </form>
     <p class="status" id="hStatus" role="status"></p>
+    <div class="ibkr" id="ibkrBox">
+      <p class="small" id="ibkrStatus">IBKR sync: not connected. Your holdings come from “I bought it”.</p>
+      <form id="ibkrForm" class="btnrow" autocomplete="off" hidden>
+        <label for="ibkrKey" class="small" style="flex:1 1 220px">Sync passphrase (the PLAN_SYNC_KEY you set in GitHub)<input id="ibkrKey" type="password" autocomplete="off" spellcheck="false"></label>
+        <button type="submit">Connect</button>
+      </form>
+      <div class="btnrow" id="ibkrBtns" hidden><button type="button" class="ghost" id="ibkrNow">Sync now</button><button type="button" class="ghost" id="ibkrForget">Forget passphrase on this device</button></div>
+    </div>
     <details id="holdBox">
       <summary>Your holdings (shares): tap to correct</summary>
       <form id="hForm" autocomplete="off" style="margin-top:12px">
@@ -648,6 +658,61 @@ td.r, th.r { text-align: right; }
     clearTimeout(holdTimer); holdTimer = setTimeout(async () => { holdTimer = null; await saveShares(); await autoCheckin(); $("hStatus").textContent = "Holdings saved."; }, 900);
   });
 
+  // ---------- IBKR sync: data/ibkr.enc.json is written daily by a GitHub job, encrypted with your passphrase ----------
+  // The passphrase stays on this device (not in backups). Shares are replaced by IBKR's when IBKR's statement is at least
+  // as new as your last change here (allowing a day, since a US trade's date is a day behind Hong Kong after midnight).
+  const IBKR_KEY = "plan-ibkr-key", IB_FUNDS = ["IUMO", "MTUM", "VUAA", "VOO", "AVUV", "AVGS", "IB01"];
+  const ibKey = () => { try { return localStorage.getItem(IBKR_KEY) || ""; } catch (e) { return ""; } };
+  let IBS = {}, ibBusy = false;
+  async function ibDecrypt(enc, pass) {
+    const b = x => Uint8Array.from(atob(x), c => c.charCodeAt(0)), te = new TextEncoder();
+    const base = await crypto.subtle.importKey("raw", te.encode(pass), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: b(enc.salt), iterations: enc.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b(enc.iv) }, key, b(enc.ct))));
+  }
+  function ibUi(msg) {
+    const has = !!ibKey(); $("ibkrForm").hidden = has; $("ibkrBtns").hidden = !has;
+    if (msg) $("ibkrStatus").textContent = msg;
+    else if (!has) $("ibkrStatus").textContent = "IBKR sync: not connected. Enter your sync passphrase to fill your holdings from IBKR automatically.";
+  }
+  async function ibkrSync(manual) {
+    const pass = ibKey(); if (!pass) return ibUi();
+    if (ibBusy || !db || !S.setupDone) return; ibBusy = true;
+    try {
+      let enc;
+      try { const r = await fetch("data/ibkr.enc.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw 0; enc = await r.json(); }
+      catch (e) { return ibUi("IBKR sync: no data yet. The first sync runs on the next weekday morning after the GitHub secrets are added."); }
+      let d;
+      try { d = await ibDecrypt(enc, pass); }
+      catch (e) { return ibUi("IBKR sync: the passphrase doesn't match. Tap “Forget passphrase” and enter it again exactly as in GitHub."); }
+      const dd = x => new Date(x + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      const cashTxt = Object.entries(d.cash || {}).map(([c, v]) => `${c} ${(+v).toLocaleString("en", { maximumFractionDigits: 2 })}`).join(" + ");
+      const otherTxt = (d.other || []).map(o => `${o.symbol} ${fmtSh(o.qty)}`).join(", ");
+      const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt} (not counted).` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
+      const lastSave = SH_UPDATED ? new Date(Date.UTC(+SH_UPDATED.slice(0, 4), +SH_UPDATED.slice(5, 7) - 1, +SH_UPDATED.slice(8, 10) - 1)).toISOString().slice(0, 10) : "";   // a day before your last change
+      if (lastSave && d.asof < lastSave && SH_UPDATED !== IBS.saved)   // a change made by this sync itself doesn't count
+        return ibUi(`IBKR sync: IBKR's latest statement (${dd(d.asof)}) is older than your last change here, so your holdings were kept. It will update after the next sync.${extra}`);
+      const next = { ...HOLD }, diffs = [];
+      for (const t of IB_FUNDS) { const v = +(d.shares || {})[t] || 0; if (Math.abs((+HOLD[t] || 0) - v) > 1e-6) { diffs.push(`${t} ${fmtSh(+HOLD[t] || 0)} → ${fmtSh(v)}`); next[t] = v; } }
+      const apply = diffs.length && (manual || IBS.asof !== d.asof || IBS.fetched !== d.fetched);
+      if (apply) {
+        HOLD = next; await saveShares(); fillHoldForm(); renderBuy();
+        await autoCheckin(`Synced from IBKR (${dd(d.asof)}): ${diffs.join(", ")}`);
+      }
+      IBS = { asof: d.asof, fetched: d.fetched, saved: apply ? today() : (IBS.saved || "") }; await db.doc("plan/ibkr").set(IBS);
+      ibUi(diffs.length && !apply
+        ? `IBKR sync: your holdings here differ from IBKR's statement of ${dd(d.asof)} (${diffs.join(", ")}). Tap “Sync now” to use IBKR's numbers.${extra}`
+        : `IBKR sync: holdings match IBKR as of ${dd(d.asof)}${apply ? ` (updated: ${diffs.join(", ")})` : ""}.${extra}`);
+    } finally { ibBusy = false; }
+  }
+  $("ibkrForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); const k = $("ibkrKey").value; if (!k) return;
+    try { localStorage.setItem(IBKR_KEY, k); } catch (e) { return ibUi("IBKR sync: this browser won't store the passphrase (private mode?)."); }
+    $("ibkrKey").value = ""; ibUi("IBKR sync: checking…"); await ibkrSync(true);
+  });
+  $("ibkrNow").addEventListener("click", () => { ibUi("IBKR sync: checking…"); ibkrSync(true); });
+  $("ibkrForget").addEventListener("click", () => { try { localStorage.removeItem(IBKR_KEY); } catch (e) {} ibUi(); });
+
   // ---------- buy day: the 15th, or the next day New York and London are both open (same rule as scripts/buy_day.py) ----------
   function nthMonday(y, m, n) { const d = new Date(y, m, 1); d.setDate(1 + ((8 - d.getDay()) % 7) + 7 * (n - 1)); return d; }
   function easterSun(y) {
@@ -938,6 +1003,7 @@ td.r, th.r { text-align: right; }
     } catch (e) { MKT = null; }
     renderSignal(); renderAll();
     await checkSplits();                                                              // before the check-in, so it saves the right balance
+    await ibkrSync(false);
     if (document.body.classList.contains("in-setup")) setupNotes(); else autoCheckin();
   }
   function renderAll() { fillPlanForm(); fillHoldForm(); renderBuy(); renderSummary(); renderChart(); renderList(); renderPhases(); }
@@ -977,6 +1043,8 @@ td.r, th.r { text-align: right; }
     hasSaved = s.exists; S = norm(s.exists ? s.data() : {}); renderAll();
     if (!S.setupDone) { if (!document.body.classList.contains("in-setup")) openSetup(false); }
   });
+  db.doc("plan/ibkr").onSnapshot(s => { IBS = s.exists ? s.data() : {}; });
+  ibUi();
   db.doc("plan/splits").onSnapshot(s => { SPL = s.exists ? { applied: {}, ...s.data() } : { applied: {} }; renderSplit(); });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; SH_UPDATED = d.updated || ""; fillHoldForm(); renderBuy(); } });
   db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });

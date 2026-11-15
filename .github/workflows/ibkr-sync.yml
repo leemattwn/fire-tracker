@@ -1,0 +1,42 @@
+name: Sync IBKR positions (encrypted)
+
+on:
+  schedule:
+    # IBKR's "last business day" statement is ready the next morning. Tue-Sat covers Mon-Fri trading.
+    - cron: "23 1 * * 2-6"    # 09:23 Hong Kong
+    - cron: "23 12 * * 2-6"   # 20:23 Hong Kong (backup)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-data          # shares the data folder with the market job, so commits don't collide
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet cryptography
+      - name: Fetch positions and save them encrypted
+        env:
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+          PLAN_SYNC_KEY: ${{ secrets.PLAN_SYNC_KEY }}
+        run: python scripts/ibkr_sync.py
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/ibkr.enc.json 2>/dev/null || exit 0
+          git diff --cached --quiet && exit 0
+          git commit -m "Update encrypted IBKR positions"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 10; done
+          exit 1

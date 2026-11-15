@@ -51,6 +51,12 @@ The app only shows what to do and what happened. This page explains the rules be
   - **prices** in US$ for IUMO, MTUM, VOO, AVUV, VUAA, AVGS and IB01.
   - **usdhkd**: the USD/HKD rate.
   - **splits**: each fund's share splits (from Yahoo Finance, plus any known ones).
+
+### IBKR sync (optional)
+
+`.github/workflows/ibkr-sync.yml` runs `scripts/ibkr_sync.py` each weekday morning. It downloads your positions with an IBKR **Flex Query** and writes them to `data/ibkr.enc.json`, **encrypted** (AES-256-GCM, key from your passphrase), because this repository is public. The app decrypts it on your phone and updates your shares when IBKR's statement is at least as new as your last change. Cash and holdings outside the plan are shown but not counted.
+
+Setup: create an Activity Flex Query (Open Positions, Cash Report, optionally Trades; XML; Last Business Day), turn on the Flex Web Service and generate a token, then add three repository secrets: `IBKR_FLEX_TOKEN`, `IBKR_FLEX_QUERY_ID` and `PLAN_SYNC_KEY` (a long passphrase you also enter once in the app). The token is read-only: it can't trade. Without the secrets the job does nothing.
   - **cpi**: Hong Kong Composite CPI (Census and Statistics Department).
 
 To refresh the data by hand: Actions tab → "Update market data" → Run workflow.
