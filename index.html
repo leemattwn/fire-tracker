@@ -32,7 +32,8 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .v.long { font-size: clamp(17px, 5vw, 26px); }
 .stat .s { font-size: 13px; color: var(--muted); }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); align-self: flex-start; }
 .pill.ahead { color: var(--ahead); } .pill.behind { color: var(--behind); }
@@ -368,18 +369,18 @@ td.r, th.r { text-align: right; }
     const fiPlan = fiAge(S.age, S.startBalance, S.realReturn);
     if (!latest) {
       $("sLatest").textContent = "—"; $("sLatestSub").textContent = "Appears once your plan starts";
-      $("sPlan").textContent = hk(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "plan not started";
+      $("sPlan").textContent = hkFull(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "plan not started";
       $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `at ${RET}% after inflation`;
       drawProgress(S.startBalance / S.target);
       return;
     }
     const a = ageAt(latest.date), real = realOf(latest), plan = planAt(latest.date) * nomAt(a), bal = latest.balance;
-    $("sLatest").textContent = hk(bal);
+    $("sLatest").textContent = hkFull(bal); $("sLatest").classList.toggle("long", hkFull(bal).length > 10);
     $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)}`;
-    $("sPlan").textContent = hk(plan);
+    $("sPlan").textContent = hkFull(plan); $("sPlan").classList.toggle("long", hkFull(plan).length > 10);
     const gap = bal - plan, el = $("sGap");
     if (plan <= 0) { el.className = "pill"; el.textContent = "plan just started"; }
-    else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hk(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
+    else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hkFull(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
     const fa = fiAge(a, real, S.realReturn);
     $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
     $("sFiSub").textContent = isFinite(fa) ? `at ${RET}% after inflation` : "raise the monthly amount";
@@ -447,7 +448,7 @@ td.r, th.r { text-align: right; }
       const add = (lab, val, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = lab; if (val != null) { const b = document.createElement("b"); b.textContent = val; d.appendChild(b); } rd.appendChild(d); };
       add(live ? `Age ${a.toFixed(1)} · ${dateAtAge(a).slice(0, 4)}` : "Drag across the chart", null, "h");
       const past = a < a0 - 1e-6, b = live ? balAt(a) : (pastPts.length ? { v: pastPts[pastPts.length - 1][1], exact: pastPts[pastPts.length - 1][2] } : null);
-      add("Your balance: ", (past || !live) && b ? hk(b.v) : "—");
+      add("Your balance: ", (past || !live) && b ? hkFull(b.v) : "—");
       if (live && past) rd.firstChild.textContent = b ? (b.exact ? `${b.exact} · age ${a.toFixed(1)} · your real balance` : `Age ${a.toFixed(1)} · between ${b.from} and ${b.to}`) : `Age ${a.toFixed(1)} · before your first record`;
       add(`Likely (${RET}%): `, past ? "—" : hk(at(main, a)));
       add("Bad (4%): ", past ? "—" : hk(at(fan[0], a)), "muted"); add("Good (8%): ", past ? "—" : hk(at(fan[2], a)), "muted");
@@ -612,7 +613,7 @@ td.r, th.r { text-align: right; }
     const park = useUS ? "CASH" : "IB01";                                           // small amounts wait as cash: an IB01 trade would cost too much
     const code = efFirst ? "EF" : parkSV ? park : svSide ? (useUS ? "AVUV" : "AVGS") : (useUS ? "MTUM" : "IUMO");
     const T = Math.round(tgt * 100);
-    const why = efFirst ? `Put all of it in your emergency fund (a savings account). You have ${hk(efHave)} of ${hk(efNeed)}.`
+    const why = efFirst ? `Put all of it in your emergency fund (a savings account). You have ${hkFull(efHave)} of ${hkFull(efNeed)}.`
       : parkSV ? (useUS ? "Keep this month's money as US$ cash in IBKR. Don't buy anything." : "Buy IB01 with all of it. The signal is OFF.")
       : `Buy ${code} with all of it.` + (tot <= 0 ? "" : svSide ? ` Small value is ${(sv / tot * 100).toFixed(0)}% of your plan (target ${T}%).` : ` Large caps are ${(sp / tot * 100).toFixed(0)}% of your plan (target ${100 - T}%).`);
     $("buyFund").textContent = code === "EF" ? "Savings" : code === "CASH" ? "Cash" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
@@ -637,7 +638,7 @@ td.r, th.r { text-align: right; }
     note.className = "small " + (us > 50000 ? "warn" : "muted");
     const miss = missingPx();
     note.textContent = (miss.length ? `No price today for ${miss.join(", ")}. ` : "")
-      + (HOLD.EF > 0 ? ` Emergency fund: ${hk(HOLD.EF)}, not counted in the plan.` : "");
+      + (HOLD.EF > 0 ? ` Emergency fund: ${hkFull(HOLD.EF)}, not counted in the plan.` : "");
   }
   let holdTimer = null;
   async function saveShares() { if (db) await db.doc("plan/shares").set({ ...HOLD, updated: today() }); }
