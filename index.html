@@ -597,6 +597,10 @@ td.r, th.r { text-align: right; }
   const fxRate = () => (MKT && +MKT.usdhkd > 0 ? +MKT.usdhkd : 7.8);
   const px = t => { if (t === "CASH") return 1; if (t === "EF") return 1 / fxRate(); return MKT && MKT.prices && MKT.prices[t] ? +MKT.prices[t].usd : NaN; };
   const planUsd = V => Object.entries(V).reduce((a, [k, v]) => a + (k === "EF" ? 0 : v), 0);   // emergency fund is not part of the plan
+  // Uninvested cash in IBKR (from the sync, in US$). Counted in your balance but not in either side's share, since it's
+  // this month's buy waiting to be invested. Any "Cash waiting" you entered is part of the same cash, so it isn't added twice.
+  const ibCashUsd = () => (ibKey() && isFinite(+IBS.cashUsd) ? Math.max(0, +IBS.cashUsd - (+HOLD.CASH || 0)) : 0);
+  const balUsd = V => planUsd(V) + ibCashUsd();
   const vals = (h = HOLD) => { const o = {}; for (const t in HOLD) o[t] = (+h[t] || 0) * (isFinite(px(t)) ? px(t) : 0); return o; };
   const missingPx = (h = HOLD) => Object.keys(HOLD).filter(t => (+h[t] || 0) > 0 && !isFinite(px(t)));
   const sigOn = () => (MKT && MKT.signal && typeof MKT.signal.on === "boolean" ? MKT.signal.on : null);
@@ -652,6 +656,8 @@ td.r, th.r { text-align: right; }
       const a = document.createElement("div"); a.className = "amt"; a.textContent = `${usd(v)} · ${tot > 0 ? (v / tot * 100).toFixed(0) : 0}%`;
       row.append(l, tr, a); box.appendChild(row);
     });
+    const ibc = ibCashUsd();
+    if (ibc > 0.5) { const c = document.createElement("p"); c.className = "small muted"; c.textContent = `Cash in IBKR waiting to invest: ${usd2(ibc)} (${hkFull(ibc * fxRate())}). Counted in your balance; invest it with this month's buy.`; box.appendChild(c); }
     const us = sumOf(V, US_LISTED), note = $("usNote");
     note.className = "small " + (us > 50000 ? "warn" : "muted");
     const miss = missingPx();
@@ -696,7 +702,7 @@ td.r, th.r { text-align: right; }
       const dd = x => new Date(x + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const cashTxt = Object.entries(d.cash || {}).map(([c, v]) => `${c} ${(+v).toLocaleString("en", { maximumFractionDigits: 2 })}`).join(" + ");
       const otherTxt = (d.other || []).map(o => `${o.symbol} ${fmtSh(o.qty)}`).join(", ");
-      const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt} (not counted).` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
+      const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt} (counted in your balance until you invest it).` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
       const lastSave = SH_UPDATED ? new Date(Date.UTC(+SH_UPDATED.slice(0, 4), +SH_UPDATED.slice(5, 7) - 1, +SH_UPDATED.slice(8, 10) - 1)).toISOString().slice(0, 10) : "";   // a day before your last change
       if (!manual && lastSave && d.asof < lastSave && SH_UPDATED !== IBS.saved)   // automatic syncs keep a newer change made here; "Sync now" always uses IBKR
         return ibUi(`IBKR sync: IBKR's latest statement (${dd(d.asof)}) is older than your last change here, so your holdings were kept. Tap “Sync now” to use IBKR's numbers anyway.${extra}`);
@@ -707,7 +713,9 @@ td.r, th.r { text-align: right; }
         HOLD = next; await saveShares(); fillHoldForm(); renderBuy();
         await autoCheckin(`Synced from IBKR (${dd(d.asof)}): ${diffs.join(", ")}`);
       }
-      IBS = { asof: d.asof, fetched: d.fetched, saved: apply ? today() : (IBS.saved || "") }; await db.doc("plan/ibkr").set(IBS);
+      const cu = d.cash || {}, cashUsd = Math.round(((+cu.USD || 0) + (+cu.HKD || 0) / fxRate()) * 100) / 100;
+      IBS = { asof: d.asof, fetched: d.fetched, saved: apply ? today() : (IBS.saved || ""), cashUsd }; await db.doc("plan/ibkr").set(IBS);
+      renderBuy(); await autoCheckin();
       ibUi(diffs.length && !apply
         ? `IBKR sync: your holdings here differ from IBKR's statement of ${dd(d.asof)} (${diffs.join(", ")}). Tap “Sync now” to use IBKR's numbers.${extra}`
         : `IBKR sync: holdings match IBKR as of ${dd(d.asof)}${apply ? ` (updated: ${diffs.join(", ")})` : ""}.${extra}`);
@@ -719,7 +727,7 @@ td.r, th.r { text-align: right; }
     $("ibkrKey").value = ""; ibUi("IBKR sync: checking…"); await ibkrSync(true);
   });
   $("ibkrNow").addEventListener("click", () => { ibUi("IBKR sync: checking…"); ibkrSync(true); });
-  $("ibkrForget").addEventListener("click", () => { try { localStorage.removeItem(IBKR_KEY); } catch (e) {} ibUi(); });
+  $("ibkrForget").addEventListener("click", async () => { try { localStorage.removeItem(IBKR_KEY); } catch (e) {} ibUi(); renderBuy(); await autoCheckin(); });
 
   // ---------- buy day: the 15th, or the next day New York and London are both open (same rule as scripts/buy_day.py) ----------
   function nthMonday(y, m, n) { const d = new Date(y, m, 1); d.setDate(1 + ((8 - d.getDay()) % 7) + 7 * (n - 1)); return d; }
@@ -748,7 +756,7 @@ td.r, th.r { text-align: right; }
     if (extra) pendingEv.push({ date: today(), text: extra });     // kept until a check-in saves it (prices loading, or another save running)
     if (!MKT || !db || !S.setupDone) return;
     if (ciBusy) { if (extra) setTimeout(() => autoCheckin(), 1500); return; }
-    const V = vals(), usdTot = planUsd(V);
+    const V = vals(), usdTot = balUsd(V);
     if (!(usdTot > 0) || missingPx().length) return;
     const rate = fxRate(), date = today(), mon = date.slice(0, 7), id = "m" + mon.replace("-", "");
     const bal = Math.round(usdTot * rate * 100) / 100, prev = checkins.find(c => c.id === id);
@@ -879,7 +887,9 @@ td.r, th.r { text-align: right; }
     HOLD = { ...HOLD, [t]: Math.round(((+HOLD[t] || 0) + n) * 1e6) / 1e6 };
     $("boughtForm").hidden = true; fillHoldForm(); renderBuy();
     try {
-      await saveShares(); if (t !== "EF") await autoCheckin(`Bought ${n} ${t}`);
+      await saveShares();                                                     // save the shares first: any save refreshes every listener
+      if (t !== "EF" && t !== "CASH" && isFinite(+IBS.cashUsd) && isFinite(px(t))) { IBS = { ...IBS, cashUsd: Math.max(0, +IBS.cashUsd - n * px(t)) }; await db.doc("plan/ibkr").set(IBS); }
+      if (t !== "EF") await autoCheckin(`Bought ${n} ${t}`);
       $("hStatus").textContent = `Added ${n} ${fname(t)}.`;
     } catch (e) { $("hStatus").textContent = "Couldn't save. Try again in a moment."; }
   });
