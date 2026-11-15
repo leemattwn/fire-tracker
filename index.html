@@ -32,10 +32,9 @@ header { display: flex; flex-direction: column; gap: 8px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .v { display: block; font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .ibkr { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
 .ibkr input { width: 100%; }
-.stat .v.long { font-size: clamp(17px, 5vw, 26px); }
 .stat .s { font-size: 13px; color: var(--muted); }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--muted); align-self: flex-start; }
 .pill.ahead { color: var(--ahead); } .pill.behind { color: var(--behind); }
@@ -317,6 +316,14 @@ td.r, th.r { text-align: right; }
     if (a >= 1e4) return "HK$" + Math.round(v / 1e3) + "k";
     return "HK$" + Math.round(v).toLocaleString("en");
   };
+  // Shrink a big number until it fits on one line in its card (narrow phones), never below 14px.
+  function fitStats() {
+    document.querySelectorAll(".stat .v").forEach(el => {
+      el.style.fontSize = ""; let fs = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > el.clientWidth + 0.5 && fs > 14) { fs -= 1; el.style.fontSize = fs + "px"; }
+    });
+  }
+  addEventListener("resize", () => requestAnimationFrame(fitStats));
   const hkFull = v => "HK$" + Math.round(v).toLocaleString("en");
   const hkExact = v => "HK$" + (+v).toLocaleString("en", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
@@ -381,21 +388,22 @@ td.r, th.r { text-align: right; }
       $("sLatest").textContent = "—"; $("sLatestSub").textContent = "Appears once your plan starts";
       $("sPlan").textContent = hkFull(S.startBalance); $("sGap").className = "pill"; $("sGap").textContent = "plan not started";
       $("sFi").textContent = isFinite(fiPlan) ? fiPlan.toFixed(1) : "90+"; $("sFiSub").textContent = `at ${RET}% after inflation`;
-      drawProgress(S.startBalance / S.target);
+      drawProgress(S.startBalance / S.target); fitStats();
       return;
     }
     const a = ageAt(latest.date), real = realOf(latest), plan = planAt(latest.date) * nomAt(a), bal = latest.balance;
-    $("sLatest").textContent = hkFull(bal); $("sLatest").classList.toggle("long", hkFull(bal).length > 10);
+    $("sLatest").textContent = hkFull(bal);
     $("sLatestSub").textContent = `${latest.date} · age ${a.toFixed(1)}`;
-    $("sPlan").textContent = hkFull(plan); $("sPlan").classList.toggle("long", hkFull(plan).length > 10);
+    $("sPlan").textContent = hkFull(plan);
     const gap = bal - plan, el = $("sGap");
     if (plan <= 0) { el.className = "pill"; el.textContent = "plan just started"; }
     else { el.className = "pill " + (gap >= 0 ? "ahead" : "behind"); el.textContent = `${gap >= 0 ? "ahead by" : "behind by"} ${hkFull(Math.abs(gap))} (${gap >= 0 ? "+" : "−"}${Math.abs(gap / plan * 100).toFixed(0)}%)`; }
     const fa = fiAge(a, real, S.realReturn);
     $("sFi").textContent = isFinite(fa) ? fa.toFixed(1) : "90+";
     $("sFiSub").textContent = isFinite(fa) ? `at ${RET}% after inflation` : "raise the monthly amount";
-    drawProgress(real / S.target);
+    drawProgress(real / S.target); fitStats();
   }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitStats);   // re-fit once the web font has loaded
 
   // ---------- chart ----------
   const NS = "http://www.w3.org/2000/svg";
