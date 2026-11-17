@@ -1,38 +1,38 @@
 {
- "updated": "2026-11-17T19:21:15+00:00",
+ "updated": "2026-11-17T21:08:00+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
   "rule": "sp_or_avgs_150",
-  "date": "2026-11-16",
-  "close": 7416.59,
-  "sma150": 7536.65,
+  "date": "2026-11-17",
+  "close": 7340.53,
+  "sma150": 7538.76,
   "sp_above": false,
-  "avgs_close": 28.29,
-  "avgs_sma150": 28.514,
-  "avgs_date": "2026-11-16",
+  "avgs_close": 27.84,
+  "avgs_sma150": 28.5194,
+  "avgs_date": "2026-11-17",
   "avgs_above": false,
   "raw": false,
-  "on": true,
-  "since": "2025-06-26",
-  "pending": true
+  "on": false,
+  "since": "2026-11-17",
+  "pending": false
  },
  "prices": {
   "VOO": {
    "symbol": "VOO",
    "currency": "USD",
-   "price": 672.695,
-   "usd": 672.695,
+   "price": 672.97,
+   "usd": 672.97,
    "date": "2026-11-17",
-   "time": "2026-11-17T19:21+00:00"
+   "time": "2026-11-17T21:00+00:00"
   },
   "AVUV": {
    "symbol": "AVUV",
    "currency": "USD",
-   "price": 119.504,
-   "usd": 119.504,
+   "price": 118.96,
+   "usd": 118.96,
    "date": "2026-11-17",
-   "time": "2026-11-17T19:21+00:00"
+   "time": "2026-11-17T20:59+00:00"
   },
   "VUAA": {
    "symbol": "VUAA.L",
@@ -56,7 +56,7 @@
    "price": 122.64,
    "usd": 122.64,
    "date": "2026-11-17",
-   "time": "2026-11-17T18:38+00:00"
+   "time": "2026-11-17T19:12+00:00"
   },
   "IUMO": {
    "symbol": "IUMO.L",
@@ -69,10 +69,10 @@
   "MTUM": {
    "symbol": "MTUM",
    "currency": "USD",
-   "price": 64.91,
-   "usd": 64.91,
+   "price": 65.3,
+   "usd": 65.3,
    "date": "2026-11-17",
-   "time": "2026-11-17T19:20+00:00"
+   "time": "2026-11-17T20:59+00:00"
   }
  },
  "splits": {
@@ -83,7 +83,13 @@
    }
   ]
  },
- "usdhkd": 7.8461,
+ "usdhkd": 7.846,
+ "alert": {
+  "flip": "OFF",
+  "date": "2026-11-17",
+  "sent": true,
+  "detail": "S&P 500 7,340.53 vs its 150-day average 7,538.76 (below); AVGS 27.84 vs its 150-day average 28.5194 (below)"
+ },
  "cpi": {
   "latest": "2026-09",
   "yoy": 1.9,
