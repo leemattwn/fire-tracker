@@ -1,0 +1,8 @@
+name: tmp-prices
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sSL --retry 3 -A "Mozilla/5.0" "https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE" | sed 's/^/ROW /'
