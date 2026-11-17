@@ -236,7 +236,8 @@ td.r, th.r { text-align: right; }
         <label for="hAVUV">AVUV<input id="hAVUV" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVUV">—</span></label>
         <label for="hAVGS">AVGS<input id="hAVGS" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vAVGS">—</span></label>
         <label for="hIB01">IB01, parked<input id="hIB01" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vIB01">—</span></label>
-        <label for="hCASH">Cash waiting (US$)<input id="hCASH" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vCASH">—</span></label><label for="hEF">Emergency fund (HK$, bank or IB01)<input id="hEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vEF">—</span></label>
+        <label for="hCASH">Cash waiting (US$)<input id="hCASH" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vCASH">—</span></label><label for="hEF">Emergency fund (HK$)<input id="hEF" type="number" min="0" step="any" inputmode="decimal" placeholder="0"><span class="hint" id="vEF">—</span></label>
+        <label for="hEFwhere">Emergency fund is kept<select id="hEFwhere"><option value="bank">outside IBKR (bank)</option><option value="cash">as cash in IBKR</option><option value="ib01">as IB01 in IBKR</option></select><span class="hint">So the IBKR sync doesn't count it as plan money</span></label>
       </form>
     </details>
     <p class="small muted" id="usNote"></p>
@@ -599,7 +600,9 @@ td.r, th.r { text-align: right; }
   const planUsd = V => Object.entries(V).reduce((a, [k, v]) => a + (k === "EF" ? 0 : v), 0);   // emergency fund is not part of the plan
   // Uninvested cash in IBKR (from the sync, in US$). Counted in your balance but not in either side's share, since it's
   // this month's buy waiting to be invested. Any "Cash waiting" you entered is part of the same cash, so it isn't added twice.
-  const ibCashUsd = () => (ibKey() && isFinite(+IBS.cashUsd) ? Math.max(0, +IBS.cashUsd - (+HOLD.CASH || 0)) : 0);
+  const efWhere = () => IBS.efWhere || "bank";
+  const ibCashUsd = () => (ibKey() && isFinite(+IBS.cashUsd)
+    ? Math.max(0, +IBS.cashUsd - (efWhere() === "cash" ? (+HOLD.EF || 0) / fxRate() : 0) - (+HOLD.CASH || 0)) : 0);
   const balUsd = V => planUsd(V) + ibCashUsd();
   const vals = (h = HOLD) => { const o = {}; for (const t in HOLD) o[t] = (+h[t] || 0) * (isFinite(px(t)) ? px(t) : 0); return o; };
   const missingPx = (h = HOLD) => Object.keys(HOLD).filter(t => (+h[t] || 0) > 0 && !isFinite(px(t)));
@@ -656,8 +659,12 @@ td.r, th.r { text-align: right; }
       const a = document.createElement("div"); a.className = "amt"; a.textContent = `${usd(v)} · ${tot > 0 ? (v / tot * 100).toFixed(0) : 0}%`;
       row.append(l, tr, a); box.appendChild(row);
     });
-    const ibc = ibCashUsd();
-    if (ibc > 0.5) { const c = document.createElement("p"); c.className = "small muted"; c.textContent = `Cash in IBKR waiting to invest: ${usd2(ibc)} (${hkFull(ibc * fxRate())}). Counted in your balance; invest it with this month's buy.`; box.appendChild(c); }
+    if (ibKey() && isFinite(+IBS.cashUsd) && +IBS.cashUsd > 0.5) {
+      const parts = [`${usd2(ibCashUsd())} waiting to invest (counted in your balance)`];
+      if (+HOLD.CASH > 0) parts.push(`${usd2(Math.min(+HOLD.CASH, +IBS.cashUsd))} cash waiting for small value (signal OFF)`);
+      if (efWhere() === "cash" && +HOLD.EF > 0) parts.push(`${hkFull(Math.min(+HOLD.EF, +IBS.cashUsd * fxRate()))} emergency fund (not counted)`);
+      const c = document.createElement("p"); c.className = "small muted"; c.textContent = `Cash in IBKR ${usd2(+IBS.cashUsd)}: ${parts.join(" · ")}.`; box.appendChild(c);
+    }
     const us = sumOf(V, US_LISTED), note = $("usNote");
     note.className = "small " + (us > 50000 ? "warn" : "muted");
     const miss = missingPx();
@@ -702,19 +709,23 @@ td.r, th.r { text-align: right; }
       const dd = x => new Date(x + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       const cashTxt = Object.entries(d.cash || {}).map(([c, v]) => `${c} ${(+v).toLocaleString("en", { maximumFractionDigits: 2 })}`).join(" + ");
       const otherTxt = (d.other || []).map(o => `${o.symbol} ${fmtSh(o.qty)}`).join(", ");
-      const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt} (counted in your balance until you invest it).` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
+      const extra = (cashTxt ? ` Cash in IBKR: ${cashTxt}.` : "") + (otherTxt ? ` Not in the plan: ${otherTxt}.` : "");
       const lastSave = SH_UPDATED ? new Date(Date.UTC(+SH_UPDATED.slice(0, 4), +SH_UPDATED.slice(5, 7) - 1, +SH_UPDATED.slice(8, 10) - 1)).toISOString().slice(0, 10) : "";   // a day before your last change
       if (!manual && lastSave && d.asof < lastSave && SH_UPDATED !== IBS.saved)   // automatic syncs keep a newer change made here; "Sync now" always uses IBKR
         return ibUi(`IBKR sync: IBKR's latest statement (${dd(d.asof)}) is older than your last change here, so your holdings were kept. Tap “Sync now” to use IBKR's numbers anyway.${extra}`);
+      const cu = d.cash || {}, cashUsd = Math.round(((+cu.USD || 0) + (+cu.HKD || 0) / fxRate()) * 100) / 100;
+      IBS = { ...IBS, cashUsd }; await db.doc("plan/ibkr").set(IBS);       // cash first: a check-in below must use this statement's cash
+      const ibShares = { ...(d.shares || {}) };
+      if (efWhere() === "ib01" && isFinite(px("IB01")) && px("IB01") > 0)   // IB01 held as the emergency fund isn't plan money
+        ibShares.IB01 = Math.max(0, Math.round(((+ibShares.IB01 || 0) - (+HOLD.EF || 0) / fxRate() / px("IB01")) * 1e4) / 1e4);
       const next = { ...HOLD }, diffs = [];
-      for (const t of IB_FUNDS) { const v = +(d.shares || {})[t] || 0; if (Math.abs((+HOLD[t] || 0) - v) > 1e-6) { diffs.push(`${t} ${fmtSh(+HOLD[t] || 0)} → ${fmtSh(v)}`); next[t] = v; } }
+      for (const t of IB_FUNDS) { const v = +ibShares[t] || 0; if (Math.abs((+HOLD[t] || 0) - v) > 1e-6) { diffs.push(`${t} ${fmtSh(+HOLD[t] || 0)} → ${fmtSh(v)}`); next[t] = v; } }
       const apply = diffs.length && (manual || IBS.asof !== d.asof || IBS.fetched !== d.fetched);
       if (apply) {
         HOLD = next; await saveShares(); fillHoldForm(); renderBuy();
         await autoCheckin(`Synced from IBKR (${dd(d.asof)}): ${diffs.join(", ")}`);
       }
-      const cu = d.cash || {}, cashUsd = Math.round(((+cu.USD || 0) + (+cu.HKD || 0) / fxRate()) * 100) / 100;
-      IBS = { asof: d.asof, fetched: d.fetched, saved: apply ? today() : (IBS.saved || ""), cashUsd }; await db.doc("plan/ibkr").set(IBS);
+      IBS = { ...IBS, asof: d.asof, fetched: d.fetched, saved: apply ? today() : (IBS.saved || ""), cashUsd }; await db.doc("plan/ibkr").set(IBS);
       renderBuy(); await autoCheckin();
       ibUi(diffs.length && !apply
         ? `IBKR sync: your holdings here differ from IBKR's statement of ${dd(d.asof)} (${diffs.join(", ")}). Tap “Sync now” to use IBKR's numbers.${extra}`
@@ -726,6 +737,7 @@ td.r, th.r { text-align: right; }
     try { localStorage.setItem(IBKR_KEY, k); } catch (e) { return ibUi("IBKR sync: this browser won't store the passphrase (private mode?)."); }
     $("ibkrKey").value = ""; ibUi("IBKR sync: checking…"); await ibkrSync(true);
   });
+  $("hEFwhere").addEventListener("change", async () => { IBS = { ...IBS, efWhere: $("hEFwhere").value }; await db.doc("plan/ibkr").set(IBS); renderBuy(); if (ibKey()) await ibkrSync(true); else await autoCheckin(); });
   $("ibkrNow").addEventListener("click", () => { ibUi("IBKR sync: checking…"); ibkrSync(true); });
   $("ibkrForget").addEventListener("click", async () => { try { localStorage.removeItem(IBKR_KEY); } catch (e) {} ibUi(); renderBuy(); await autoCheckin(); });
 
@@ -1061,7 +1073,7 @@ td.r, th.r { text-align: right; }
     hasSaved = s.exists; S = norm(s.exists ? s.data() : {}); renderAll();
     if (!S.setupDone) { if (!document.body.classList.contains("in-setup")) openSetup(false); }
   });
-  db.doc("plan/ibkr").onSnapshot(s => { IBS = s.exists ? s.data() : {}; });
+  db.doc("plan/ibkr").onSnapshot(s => { IBS = s.exists ? s.data() : {}; if ($("hEFwhere")) $("hEFwhere").value = IBS.efWhere || "bank"; });
   ibUi();
   db.doc("plan/splits").onSnapshot(s => { SPL = s.exists ? { applied: {}, ...s.data() } : { applied: {} }; renderSplit(); });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; SH_UPDATED = d.updated || ""; fillHoldForm(); renderBuy(); } });
