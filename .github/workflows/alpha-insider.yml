@@ -2,7 +2,7 @@ name: Research - insider buying data (branch only)
 on:
   push:
     branches: [alpha-insider]
-    paths: [".github/workflows/alpha-insider.yml"]
+    paths: [".github/workflows/alpha-insider.yml", "research/stage1_sec.py"]
 permissions:
   contents: write
 jobs:
@@ -19,11 +19,12 @@ jobs:
       - name: Save stage 1
         run: |
           git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add research/purchases.csv.gz research/stage1_log.txt && git commit -m "research: stage 1 data" && git push
+          git add research/purchases.csv.gz research/stage1_log.txt && git commit -m "research: stage 1 data" && git pull --rebase && git push
       - name: Stage 2 - prices
+        id: s2
         working-directory: research
         run: python stage2_prices.py
       - name: Save stage 2
-        if: always()
+        if: success() || steps.s2.outcome == 'failure'
         run: |
           git add research/monthly.csv.gz research/stage2_log.txt 2>/dev/null; git commit -m "research: stage 2 data" && git pull --rebase && git push || true

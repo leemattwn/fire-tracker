@@ -2,8 +2,9 @@
 by officers/directors. Output: purchases.csv.gz (one row per filing x owner) + stage1_log.txt."""
 import csv, gzip, io, sys, time, urllib.request, zipfile
 from datetime import date, datetime
-UA = {"User-Agent": "fire-tracker research 41898283+github-actions[bot]@users.noreply.github.com"}
-URL = "https://www.sec.gov/files/structureddata/data/insider-transactions-data-sets/{y}q{q}_form345.zip"
+UA = {"User-Agent": "Matt Lee leemattwn@users.noreply.github.com", "Accept-Encoding": "identity", "Host": "www.sec.gov"}
+URLS = ["https://www.sec.gov/files/structureddata/data/insider-transactions-data-sets/{y}q{q}_form345.zip",
+        "https://www.sec.gov/files/datastandardsinnovation/data/insider-transactions-data-sets/{y}q{q}_form345.zip"]
 log = open("stage1_log.txt", "w")
 def say(*a): print(*a); print(*a, file=log); log.flush()
 def rows(z, name):
@@ -22,10 +23,18 @@ today = date.today(); total = 0
 for y in range(2006, today.year + 1):
     for q in range(1, 5):
         if (y, q) > (today.year, (today.month - 1) // 3 + 1): break
-        try:
-            with urllib.request.urlopen(urllib.request.Request(URL.format(y=y, q=q), headers=UA), timeout=180) as r: data = r.read()
-        except Exception as e:
-            say(f"{y}Q{q}: not available ({e})"); continue
+        data, err = None, None
+        for u in URLS:
+            for att in range(3):
+                try:
+                    with urllib.request.urlopen(urllib.request.Request(u.format(y=y, q=q), headers=UA), timeout=180) as r: data = r.read()
+                    break
+                except Exception as e:
+                    err = e; time.sleep(2 + 4 * att)
+                    if getattr(e, "code", 0) == 404: break
+            if data: break
+        if not data:
+            say(f"{y}Q{q}: not available ({err})"); continue
         z = zipfile.ZipFile(io.BytesIO(data))
         if total == 0: say("files:", z.namelist())
         sub = {}
@@ -56,3 +65,4 @@ for y in range(2006, today.year + 1):
         say(f"{y}Q{q}: {len(sub)} form-4 filings, {len(agg)} with officer/director open-market buys, {n} rows")
         time.sleep(0.5)
 out.close(); say("total rows", total)
+if total == 0: sys.exit("no data downloaded")
