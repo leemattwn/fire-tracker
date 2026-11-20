@@ -1,0 +1,12 @@
+name: tmp-prices
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B=https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp
+          for f in 25_Portfolios_5x5_CSV 25_Portfolios_ME_OP_5x5_CSV F-F_Research_Data_Factors_CSV; do
+            curl -sSL --retry 4 -A "Mozilla/5.0" "$B/$f.zip" -o "$f.zip" && echo "SIZE $f $(stat -c %s $f.zip)"
+            echo "BEGIN $f"; base64 -w 0 "$f.zip"; echo; echo "END $f"
+          done
