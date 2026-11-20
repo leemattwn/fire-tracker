@@ -614,7 +614,21 @@ td.r, th.r { text-align: right; }
   const sigOn = () => (MKT && MKT.signal && typeof MKT.signal.on === "boolean" ? MKT.signal.on : null);
   const usd = v => "US$" + Number(v || 0).toLocaleString("en", { maximumFractionDigits: 0 });
   const usd2 = v => "US$" + Number(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  let filterSaving = false;
+  let filterSaving = false, ciLoaded = false;
+  const svUsdOf = v => (+v.AVUV || 0) + (+v.AVGS || 0) + (+v.IB01 || 0) + (+v.CASH || 0);
+  // Records the day small value first reaches US$1,500 (the filter then stays on for good). Only settled numbers count:
+  // never a half-typed holding, never before prices and history have loaded. A start that was recorded by mistake
+  // (small value under US$1,500 now, nothing parked in IB01, and no saved month ever at US$1,500) is undone.
+  function checkFilterStart(V) {
+    if (!MKT || !db || !S.setupDone || filterSaving || holdTimer || !ciLoaded || missingPx().length) return;
+    const now = svUsdOf(V);
+    let next = null;
+    if (now >= FILTER_MIN && !S.filterStarted) next = today();
+    else if (S.filterStarted && now < FILTER_MIN && V.IB01 < 1 && !checkins.some(c => c.usd && svUsdOf(c.usd) >= FILTER_MIN)) next = "";
+    if (next === null) return;
+    filterSaving = true; S = { ...S, filterStarted: next || null };
+    db.doc("plan/settings").set(S).finally(() => { filterSaving = false; renderBuy(); });
+  }
   const DIRECT_MIN = 800;   // US$: below this, a London trade's US$1.70 costs more than buying in New York and moving later
   const holdHint = (t, V) => t === "EF" ? "Not part of the plan" : t === "CASH" ? (synced() ? `Worked out from IBKR: ${usd2(V.CASH)}` : V.CASH > 0 ? "Goes into small value when the signal is ON" : "Only used while the signal is OFF")
     : isFinite(px(t)) ? `${usd2(V[t])} · ${usd2(px(t))} each` : (MKT ? "no price today" : "loading price…");
@@ -634,10 +648,7 @@ td.r, th.r { text-align: right; }
     // The filter starts once small value (funds + parked IB01 + cash waiting) first reaches US$1,500, and then stays on for good,
     // so a fall below US$1,500 (in a crash, or after switching fees) can never leave money stranded or skip a switch.
     const reached = risk + V.IB01 + V.CASH >= FILTER_MIN, filterOn = reached || !!S.filterStarted || V.IB01 + V.CASH > 1;
-    if (reached && !S.filterStarted && S.setupDone && db && !filterSaving) {
-      filterSaving = true; S = { ...S, filterStarted: today() };
-      db.doc("plan/settings").set(S).finally(() => { filterSaving = false; });
-    }
+    checkFilterStart(V);
     const parkSV = filterOn && svSide && sig === false;
     const efNeed = student ? 0 : payNow(6 * S.living), efHave = +HOLD.EF || 0, efFirst = efHave < efNeed;
     const park = useUS ? "CASH" : "IB01";                                           // small amounts wait as cash: an IB01 trade would cost too much
@@ -684,8 +695,9 @@ td.r, th.r { text-align: right; }
   $("hForm").addEventListener("input", () => {           // corrections: preview now, save a moment later
     const next = {}; for (const id in H_IDS) next[H_IDS[id]] = Math.max(0, Number($(id).value || 0));
     if (synced()) next.CASH = +HOLD.CASH || 0;                    // with the IBKR sync, cash waiting is worked out, not typed
-    HOLD = next; renderBuy(); $("hStatus").textContent = "Holdings updated. Saving…";
-    clearTimeout(holdTimer); holdTimer = setTimeout(async () => { holdTimer = null; await saveShares(); await autoCheckin(); $("hStatus").textContent = "Holdings saved."; }, 900);
+    HOLD = next; clearTimeout(holdTimer);          // mark "typing" before drawing, so a half-typed number is never recorded
+    holdTimer = setTimeout(async () => { holdTimer = null; await saveShares(); await autoCheckin(); renderBuy(); $("hStatus").textContent = "Holdings saved."; }, 900);
+    renderBuy(); $("hStatus").textContent = "Holdings updated. Saving…";
   });
 
   // ---------- IBKR sync: data/ibkr.enc.json is written daily by a GitHub job, encrypted with your passphrase ----------
@@ -1086,7 +1098,7 @@ td.r, th.r { text-align: right; }
   ibUi();
   db.doc("plan/splits").onSnapshot(s => { SPL = s.exists ? { applied: {}, ...s.data() } : { applied: {} }; renderSplit(); });
   db.doc("plan/shares").onSnapshot(s => { if (s.exists) { const d = s.data(); for (const t in HOLD) HOLD[t] = +d[t] || 0; SH_UPDATED = d.updated || ""; fillHoldForm(); renderBuy(); } });
-  db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); renderAll(); });
+  db.collection("checkins").orderBy("date").onSnapshot(q => { checkins = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.date && isFinite(c.balance)); ciLoaded = true; renderAll(); });
   $("bkDown").addEventListener("click", () => {
     try {
       const blob = new Blob([db.exportJSON()], { type: "application/json" });
