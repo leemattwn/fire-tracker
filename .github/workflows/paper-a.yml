@@ -1,0 +1,48 @@
+name: Paper test - industry momentum (pretend money)
+
+on:
+  schedule:
+    - cron: "45 22 1-7 * 1-5"   # 06:45 Hong Kong on the first weekdays of each month, after the US close
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/paper_a.py"   # a test run whenever the script changes (records nothing before December)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: market-data          # shares the data folder with the other jobs, so commits don't collide
+  cancel-in-progress: false
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Update the pretend portfolio (does nothing if this month is already done)
+        id: paper
+        run: python scripts/paper_a.py
+      - name: Commit
+        if: steps.paper.outputs.msg != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/paper_a.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Paper test A: monthly update"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 10; done
+          exit 1
+      - name: Tell you on your phone (quietly)
+        if: steps.paper.outputs.msg != ''
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          MSG: ${{ steps.paper.outputs.msg }}
+        run: |
+          [ -n "$NTFY_TOPIC" ] && curl -fsS --retry 4 --retry-delay 10 -H "Title: Paper test A (no action needed)" \
+            -H "Priority: low" -H "Tags: test_tube" -d "$MSG" "https://ntfy.sh/$NTFY_TOPIC" || true

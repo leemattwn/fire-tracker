@@ -62,3 +62,12 @@ Setup: create an Activity Flex Query (Open Positions, Cash Report, optionally Tr
 To refresh the data by hand: Actions tab → "Update market data" → Run workflow.
 
 This is a planning aid, not financial advice.
+
+## Paper test: industry momentum (pretend money)
+
+A side experiment, separate from the plan. Each month, `scripts/paper_a.py` ranks the 11 SPDR sector ETFs by their
+return over the past 12 months (skipping the latest month), "buys" the top 3 with US$10,000 of pretend money at the
+close of the month's first trading day, and compares the result with simply holding VOO. Costs are included
+(0.10% of each pretend trade, 0.10%/yr fees). It starts in December 2026; results build up in `data/paper_a.json`
+and you get a quiet phone message each month. **It is not a trade instruction**, and nothing touches your account.
+The rule was fixed before testing and passed a backtest from 1927; we review it after 6+ months (about June 2027).
