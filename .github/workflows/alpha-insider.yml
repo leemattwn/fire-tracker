@@ -2,24 +2,29 @@ name: Research - insider buying data (branch only)
 on:
   push:
     branches: [alpha-insider]
-    paths: [".github/workflows/alpha-insider.yml"]
+    paths: [".github/workflows/alpha-insider.yml", "research/stage1_sec.py"]
 permissions:
   contents: write
 jobs:
-  probe:
+  data:
     runs-on: ubuntu-latest
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          u=https://www.sec.gov/files/structureddata/data/insider-transactions-data-sets/2024q1_form345.zip
-          {
-          for ua in "Matt Lee leemattwn@users.noreply.github.com" "Research Project research@example.com" "Mozilla/5.0"; do
-            echo "UA=$ua -> $(curl -s -o /dev/null -w '%{http_code} %{size_download}' -A "$ua" "$u")"
-          done
-          echo "edgar page -> $(curl -s -o /dev/null -w '%{http_code}' -A 'Research Project research@example.com' https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent)"
-          echo "efts api -> $(curl -s -o /dev/null -w '%{http_code}' -A 'Research Project research@example.com' 'https://efts.sec.gov/LATEST/search-index?q=%22form%204%22')"
-          echo "data.sec.gov -> $(curl -s -o /dev/null -w '%{http_code}' -A 'Research Project research@example.com' https://data.sec.gov/submissions/CIK0000320193.json)"
-          echo "body sample:"; curl -s -A "Mozilla/5.0" "$u" | head -c 400
-          } > research/probe.txt 2>&1
-          git config user.name bot; git config user.email bot@x
-          git add research/probe.txt && git commit -m probe && git push
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Stage 1 - SEC insider purchases
+        working-directory: research
+        run: python stage1_sec.py
+      - name: Save stage 1
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add research/purchases.csv.gz research/stage1_log.txt && git commit -m "research: stage 1 data" && git pull --rebase && git push
+      - name: Stage 2 - prices
+        id: s2
+        working-directory: research
+        run: python stage2_prices.py
+      - name: Save stage 2
+        if: success() || steps.s2.outcome == 'failure'
+        run: |
+          git add research/monthly.csv.gz research/stage2_log.txt 2>/dev/null; git commit -m "research: stage 2 data" && git pull --rebase && git push || true

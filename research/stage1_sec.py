@@ -2,7 +2,7 @@
 by officers/directors. Output: purchases.csv.gz (one row per filing x owner) + stage1_log.txt."""
 import csv, gzip, io, sys, time, urllib.request, zipfile
 from datetime import date, datetime
-UA = {"User-Agent": "Matt Lee leemattwn@users.noreply.github.com", "Accept-Encoding": "identity", "Host": "www.sec.gov"}
+UA = {"User-Agent": "Research Project research@example.com", "Accept-Encoding": "identity", "Host": "www.sec.gov"}
 URLS = ["https://www.sec.gov/files/structureddata/data/insider-transactions-data-sets/{y}q{q}_form345.zip",
         "https://www.sec.gov/files/datastandardsinnovation/data/insider-transactions-data-sets/{y}q{q}_form345.zip"]
 log = open("stage1_log.txt", "w")
