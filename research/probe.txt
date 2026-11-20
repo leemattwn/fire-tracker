@@ -1,0 +1,16 @@
+UA=Matt Lee leemattwn@users.noreply.github.com -> 403 1925
+UA=Research Project research@example.com -> 200 13874620
+UA=Mozilla/5.0 -> 403 1925
+edgar page -> 200
+efts api -> 200
+data.sec.gov -> 200
+body sample:
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>SEC.gov | Request Rate Threshold Exceeded</title>
+<style>
+html {height: 100%}
+body {height: 100%; margin:0; padding:0;}
+#header {background-color:#003
