@@ -1,0 +1,18 @@
+name: tmp fetch Ken French industry data
+on:
+  push:
+    branches: [tmp-kf-industry]
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p kf && cd kf
+          B=https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp
+          curl -fsSL -A "Mozilla/5.0" -o i12.zip $B/12_Industry_Portfolios_CSV.zip
+          unzip -o i12.zip && rm i12.zip && ls -la
+          cd .. && git config user.name bot && git config user.email bot@x
+          git add kf && git commit -m "data" && git push
