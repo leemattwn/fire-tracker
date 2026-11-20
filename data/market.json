@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T21:05:28+00:00",
+ "updated": "2026-11-20T22:19:11+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
@@ -21,18 +21,18 @@
   "VOO": {
    "symbol": "VOO",
    "currency": "USD",
-   "price": 633.667,
-   "usd": 633.667,
+   "price": 635.54,
+   "usd": 635.54,
    "date": "2026-11-20",
-   "time": "2026-11-20T20:59+00:00"
+   "time": "2026-11-20T21:00+00:00"
   },
   "AVUV": {
    "symbol": "AVUV",
    "currency": "USD",
-   "price": 114.26,
-   "usd": 114.26,
+   "price": 114.4,
+   "usd": 114.4,
    "date": "2026-11-20",
-   "time": "2026-11-20T20:59+00:00"
+   "time": "2026-11-20T21:00+00:00"
   },
   "VUAA": {
    "symbol": "VUAA.L",
@@ -69,10 +69,10 @@
   "MTUM": {
    "symbol": "MTUM",
    "currency": "USD",
-   "price": 60.31,
-   "usd": 60.31,
+   "price": 60.27,
+   "usd": 60.27,
    "date": "2026-11-20",
-   "time": "2026-11-20T20:59+00:00"
+   "time": "2026-11-20T21:00+00:00"
   }
  },
  "splits": {
@@ -83,7 +83,7 @@
    }
   ]
  },
- "usdhkd": 7.8379,
+ "usdhkd": 7.8389,
  "alert": {
   "flip": "OFF",
   "date": "2026-11-17",
