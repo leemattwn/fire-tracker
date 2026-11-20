@@ -1,0 +1,29 @@
+name: Research - insider buying data (branch only)
+on:
+  push:
+    branches: [alpha-insider]
+    paths: [".github/workflows/alpha-insider.yml"]
+permissions:
+  contents: write
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Stage 1 - SEC insider purchases
+        working-directory: research
+        run: python stage1_sec.py
+      - name: Save stage 1
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add research/purchases.csv.gz research/stage1_log.txt && git commit -m "research: stage 1 data" && git push
+      - name: Stage 2 - prices
+        working-directory: research
+        run: python stage2_prices.py
+      - name: Save stage 2
+        if: always()
+        run: |
+          git add research/monthly.csv.gz research/stage2_log.txt 2>/dev/null; git commit -m "research: stage 2 data" && git pull --rebase && git push || true
