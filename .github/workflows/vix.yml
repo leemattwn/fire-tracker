@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 vix/kf.py
+      - run: python3 vix/credit.py
       - run: |
           git config user.name Claude; git config user.email noreply@anthropic.com
           git add -A vix; git commit -m "data [skip ci]"; git push
