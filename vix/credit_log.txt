@@ -1,0 +1,7 @@
+ok F-F_Research_Data_Factors_daily.csv
+ok 6_Portfolios_2x3_Daily.csv
+ok dbn moody 3610
+ok dbn aaa 3608
+ok dbn baa 3608
+https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA try0: TimeoutError('The read operation timed out')
+https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA try0: TimeoutError('The read operation timed out')
