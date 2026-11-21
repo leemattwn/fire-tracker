@@ -9,4 +9,4 @@ jobs:
       - run: python3 vix/kf.py
       - run: |
           git config user.name Claude; git config user.email noreply@anthropic.com
-          git add vix/*.csv vix/*.CSV; git commit -m "data [skip ci]"; git push
+          git add -A vix; git commit -m "data [skip ci]"; git push
