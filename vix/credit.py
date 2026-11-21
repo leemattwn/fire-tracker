@@ -13,9 +13,12 @@ for n in []:
         for f in z.namelist(): open("vix/"+f,"wb").write(z.read(f)); log.write(f"ok {f}\n")
 # DBnomics mirror of the Fed's H.15 release (Moody's Aaa/Baa, monthly)
 import urllib.parse
-dim=urllib.parse.quote(json.dumps({"FREQ":["129"],"INSTRUMENT":["AAA","BAA"]}))
-d=get(f"https://api.db.nomics.world/v22/series/FED/H15?dimensions={dim}&observations=1&limit=50&format=json",3,90)
-if d: open("vix/dbn_h15.json","wb").write(d); log.write(f"ok dbn h15 {len(d)}\n")
+for tag,dd in [("i",{"INSTRUMENT":["AAA","BAA"]}),("a",{"INSTRUMENT":["AAA"]})]:
+    dim=urllib.parse.quote(json.dumps(dd))
+    d=get(f"https://api.db.nomics.world/v22/series/FED/H15?dimensions={dim}&observations=1&limit=50&format=json",3,90)
+    if d: open(f"vix/dbn_{tag}.json","wb").write(d); log.write(f"ok dbn {tag} {len(d)}\n")
+d=get("https://api.db.nomics.world/v22/series/FED/H15?observations=0&limit=1000&format=json",3,90)
+if d: open("vix/dbn_all.json","wb").write(d); log.write(f"ok dbn all {len(d)}\n")
 for s in []:
     d=get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={s}",1,30)
     if d and d[:4]!=b"<!DO": open(f"vix/{s}.csv","wb").write(d); log.write(f"ok {s} {len(d)}\n")
