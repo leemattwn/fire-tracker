@@ -1,0 +1,12 @@
+name: vix-data
+on: { push: { branches: [tmp-vix] } }
+permissions: { contents: write }
+jobs:
+  f:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 vix/fetch.py
+      - run: |
+          git config user.name Claude; git config user.email noreply@anthropic.com
+          git add vix/*.csv; git commit -m "data [skip ci]"; git push
