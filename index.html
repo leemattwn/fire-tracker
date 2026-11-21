@@ -616,14 +616,17 @@ td.r, th.r { text-align: right; }
   const usd2 = v => "US$" + Number(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   let filterSaving = false, ciLoaded = false;
   const svUsdOf = v => (+v.AVUV || 0) + (+v.AVGS || 0) + (+v.IB01 || 0) + (+v.CASH || 0);
-  // Records the day small value first reaches US$1,500 (the filter then stays on for good). Only settled numbers count:
-  // never a half-typed holding, never before prices and history have loaded. A start that was recorded by mistake
-  // (small value under US$1,500 now, nothing parked in IB01, and no saved month ever at US$1,500) is undone.
+  // Records the day the filter starts (it then stays on for good): small value has reached US$1,500 AND the signal is ON.
+  // Your rule (21 Nov 2026): if small value reaches US$1,500 while the signal is already OFF, nothing is sold. You keep
+  // buying AVUV/AVGS as normal until the signal turns ON; from then on, the next OFF moves small value to IB01.
+  // Only settled numbers count: never a half-typed holding, never before prices and history have loaded. A start that was
+  // recorded by mistake (small value under US$1,500 now, nothing parked in IB01, and no saved month ever at US$1,500) is undone.
+  const waitingForOn = V => !S.filterStarted && sigOn() !== true && V.IB01 + V.CASH <= 1;
   function checkFilterStart(V) {
     if (!MKT || !db || !S.setupDone || filterSaving || holdTimer || !ciLoaded || missingPx().length) return;
     const now = svUsdOf(V);
     let next = null;
-    if (now >= FILTER_MIN && !S.filterStarted) next = today();
+    if (now >= FILTER_MIN && !S.filterStarted && sigOn() === true) next = today();
     else if (S.filterStarted && now < FILTER_MIN && V.IB01 < 1 && !checkins.some(c => c.usd && svUsdOf(c.usd) >= FILTER_MIN)) next = "";
     if (next === null) return;
     filterSaving = true; S = { ...S, filterStarted: next || null };
@@ -645,9 +648,10 @@ td.r, th.r { text-align: right; }
     const tgt = Math.min(100, Math.max(0, isFinite(+S.svShare) ? +S.svShare : 70)) / 100;
     const svSide = tot <= 0 ? tgt >= 0.5 : sv / tot < tgt;
     const sig = sigOn(), risk = V.AVUV + V.AVGS;
-    // The filter starts once small value (funds + parked IB01 + cash waiting) first reaches US$1,500, and then stays on for good,
-    // so a fall below US$1,500 (in a crash, or after switching fees) can never leave money stranded or skip a switch.
-    const reached = risk + V.IB01 + V.CASH >= FILTER_MIN, filterOn = reached || !!S.filterStarted || V.IB01 + V.CASH > 1;
+    // The filter starts once small value (funds + parked IB01 + cash waiting) has reached US$1,500 and the signal is ON, and then
+    // stays on for good, so a fall below US$1,500 (in a crash, or after switching fees) can never leave money stranded or skip a switch.
+    const reached = risk + V.IB01 + V.CASH >= FILTER_MIN;
+    const filterOn = !!S.filterStarted || V.IB01 + V.CASH > 1 || (reached && !waitingForOn(V));
     checkFilterStart(V);
     const parkSV = filterOn && svSide && sig === false;
     const efNeed = student ? 0 : payNow(6 * S.living), efHave = +HOLD.EF || 0, efFirst = efHave < efNeed;
@@ -657,7 +661,8 @@ td.r, th.r { text-align: right; }
     const why = efFirst ? `Put all of it in your emergency fund (a savings account). You have ${hkFull(efHave)} of ${hkFull(efNeed)}.`
       : parkSV ? (useUS ? "Keep this month's money as US$ cash in IBKR. Don't buy anything." : "Buy IB01 with all of it. The signal is OFF.")
       : `Buy ${code} with all of it.` + (tot <= 0 ? "" : svSide ? ` Small value is ${(sv / tot * 100).toFixed(0)}% of your plan (target ${T}%).` : ` Large caps are ${(sp / tot * 100).toFixed(0)}% of your plan (target ${100 - T}%).`);
-    $("buyFund").textContent = code === "EF" ? "Savings" : code === "CASH" ? "Cash" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why;
+    const waitTxt = reached && waitingForOn(V) && sig === false ? " Small value has passed US$1,500, but the signal was already OFF, so nothing is sold: the filter starts once the signal turns ON." : "";
+    $("buyFund").textContent = code === "EF" ? "Savings" : code === "CASH" ? "Cash" : code; $("buyFund").dataset.code = code; $("buyWhy").textContent = why + waitTxt;
     const realAmt = contribAt(ageAt(today())), pay = payNow(realAmt);
     const bd = nextBuyDay(), moved = bd.getDate() !== 15;
     const bdTxt = bd.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
