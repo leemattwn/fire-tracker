@@ -22,7 +22,7 @@ The app only shows what to do and what happened. This page explains the rules be
 - **OFF** only when **both** close below their 150-day averages for two closes in a row. It turns back ON when either is above for two closes.
 - **OFF:** sell AVUV/AVGS and buy IB01. While OFF, new small-value money waits in IB01, or as US$ cash for buys under US$800.
 - **ON again:** sell IB01 and buy back small value.
-- The filter only starts once small value (including IB01 and cash waiting) first reaches US$1,500. Below that, switching fees cost more than it saves. Once started, it stays on.
+- The filter only starts once small value (including IB01 and cash waiting) first reaches US$1,500. Below that, switching fees cost more than it saves. If the signal is already OFF at that point, nothing is sold: you keep buying as normal and the filter starts when the signal next turns ON. Once started, it stays on.
 - The large-cap side (IUMO) is never switched.
 - Alerts go to your phone (ntfy) and email (a GitHub issue) when the signal flips, plus a reminder before each month's buy.
 
