@@ -6,16 +6,17 @@ def get(u,tries=2,to=40):
         try: return urllib.request.urlopen(urllib.request.Request(u,headers=H),timeout=to).read()
         except Exception as e: log.write(f"{u} try{a}: {e!r}\n"); log.flush(); time.sleep(3)
 B="https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/"
-for n in ["F-F_Research_Data_Factors_daily_CSV.zip","6_Portfolios_2x3_daily_CSV.zip"]:
+for n in []:
     d=get(B+n,3,120)
     if d:
         z=zipfile.ZipFile(io.BytesIO(d))
         for f in z.namelist(): open("vix/"+f,"wb").write(z.read(f)); log.write(f"ok {f}\n")
-# DBnomics mirror of the Fed's H.15 release (Moody's Aaa/Baa monthly, through 2016)
-for q in ["moody","aaa","baa"]:
-    d=get(f"https://api.db.nomics.world/v22/series/FED/H15?q={q}&observations=1&limit=100&format=json",2,60)
-    if d: open(f"vix/dbn_{q}.json","wb").write(d); log.write(f"ok dbn {q} {len(d)}\n")
-for s in ["BAA","AAA"]:
+# DBnomics mirror of the Fed's H.15 release (Moody's Aaa/Baa, monthly)
+import urllib.parse
+dim=urllib.parse.quote(json.dumps({"FREQ":["129"],"INSTRUMENT":["AAA","BAA"]}))
+d=get(f"https://api.db.nomics.world/v22/series/FED/H15?dimensions={dim}&observations=1&limit=50&format=json",3,90)
+if d: open("vix/dbn_h15.json","wb").write(d); log.write(f"ok dbn h15 {len(d)}\n")
+for s in []:
     d=get(f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={s}",1,30)
     if d and d[:4]!=b"<!DO": open(f"vix/{s}.csv","wb").write(d); log.write(f"ok {s} {len(d)}\n")
 log.close()
