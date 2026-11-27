@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-27T00:50:15+00:00",
+ "updated": "2026-11-27T01:46:30+00:00",
  "errors": [],
  "signal_source": "yahoo",
  "signal": {
@@ -83,7 +83,7 @@
    }
   ]
  },
- "usdhkd": 7.837,
+ "usdhkd": 7.8327,
  "alert": {
   "flip": "OFF",
   "date": "2026-11-17",
